@@ -53,7 +53,7 @@ export default function HomePage() {
   };
 
   // Fetch videos; if isLoadMore, append; else replace.
-  // After fetching videos, we immediately collect channelIds and fetch their thumbnails.
+  // After fetching videos, we gather channelIds and fetch their thumbnails.
   const fetchVideos = useCallback(
     async (isLoadMore = false) => {
       setLoading(true);
@@ -68,7 +68,7 @@ export default function HomePage() {
           url.searchParams.set("part", "snippet,statistics");
           url.searchParams.set("chart", "mostPopular");
           url.searchParams.set("maxResults", "20");
-          url.searchParams.set("regionCode", "US");
+          url.searchParams.set("regionCode", "SA");
           url.searchParams.set("key", API_KEY);
           if (isLoadMore && nextPageToken) {
             url.searchParams.set("pageToken", nextPageToken);
@@ -117,7 +117,7 @@ export default function HomePage() {
           }
         }
 
-        // 4) Update `videos` state (append or replace)
+        // 4) Update `videos` state
         if (isLoadMore) {
           setVideos((prev) => [...prev, ...fetchedItems]);
         } else {
@@ -125,14 +125,12 @@ export default function HomePage() {
         }
         setNextPageToken(newNextPage);
 
-        // 5) AFTER we have all fetchedItems, gather their channelIds
-        //    and make a Channels API call to get each channel's thumbnail
+        // 5) Fetch channel icons
         const uniqueChannelIds = [
           ...new Set(fetchedItems.map((vid) => vid.snippet.channelId)),
         ].filter(Boolean);
 
         if (uniqueChannelIds.length > 0) {
-          // Build the URL for channels.list
           const channelsUrl = new URL(
             "https://www.googleapis.com/youtube/v3/channels"
           );
@@ -144,7 +142,6 @@ export default function HomePage() {
           const channelsData = await channelsResp.json();
           const channelsItems = channelsData.items || [];
 
-          // Build a mapping: channelId → thumbnailURL
           const newIcons = {};
           channelsItems.forEach((channel) => {
             const cid = channel.id;
@@ -154,7 +151,6 @@ export default function HomePage() {
             }
           });
 
-          // Merge with any existing icons (so “load more” keeps older entries)
           setChannelIcons((prev) => ({ ...prev, ...newIcons }));
         }
       } catch (err) {
@@ -285,9 +281,9 @@ export default function HomePage() {
             />
             {suggestions.length > 0 && (
               <ul className="absolute top-full left-0 w-full bg-white text-black mt-1 rounded shadow-lg z-20 max-h-60 overflow-y-auto">
-                {suggestions.map((sugg) => (
+                {suggestions.map((sugg, idx) => (
                   <li
-                    key={sugg}
+                    key={`${sugg}-${idx}`}
                     className="px-3 py-2 hover:bg-gray-200 cursor-pointer"
                     onClick={() => {
                       setSearchTerm(sugg);
@@ -317,7 +313,7 @@ export default function HomePage() {
           <p className="text-center mt-8">Loading...</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {videos.map((video) => {
+            {videos.map((video, index) => {
               const vidId = video.id;
               const { snippet, statistics } = video;
               const publishedRelative = getRelativeTime(snippet.publishedAt);
@@ -325,13 +321,17 @@ export default function HomePage() {
                 ? Number(statistics.viewCount).toLocaleString()
                 : "0";
 
-              // Get the channel icon from our state (fallback to a  placeholder if not yet loaded)
+              // Get the channel icon from our state (fallback if not yet loaded)
               const channelIconUrl =
                 channelIcons[snippet.channelId] ||
                 "https://www.youtube.com/s/desktop/placeholder.png";
 
               return (
-                <Link to={`/watch/${vidId}`} key={vidId} className="group">
+                <Link
+                  to={`/watch/${vidId}`}
+                  key={`${vidId}-${index}`}
+                  className="group"
+                >
                   <div
                     className="relative pb-[56.25%] bg-black overflow-hidden rounded-lg"
                     onMouseEnter={() => setHoveredVideoId(vidId)}
@@ -354,7 +354,6 @@ export default function HomePage() {
                     )}
                   </div>
                   <div className="mt-2 flex">
-                    {/* Use the fetched channel icon here */}
                     <img
                       src={channelIconUrl}
                       alt={snippet.channelTitle}
