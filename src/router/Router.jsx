@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider, Outlet } from "react-router";
 import HomePage from "../pages/HomePage";
 import LoginPage from "../pages/LoginPage";
 import Register from "../pages/Register";
+import VideoPage from "../pages/VideoPage";
 // import ChatPage from "../pages/ChatPage";
 
 function RootLayout() {
@@ -18,7 +19,10 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <RootLayout />,
-    children: [{ index: true, element: <HomePage /> }],
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: "/watch/:videoId", element: <VideoPage /> },
+    ],
   },
 
   { path: "login", element: <LoginPage /> },
