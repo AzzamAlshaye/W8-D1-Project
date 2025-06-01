@@ -1,5 +1,5 @@
 // src/pages/HomePage.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router";
 
 const API_KEY = "AIzaSyBchUlb9-p61sooK84Qvl5wWS4CnaE62Es";
@@ -7,12 +7,15 @@ const API_KEY = "AIzaSyBchUlb9-p61sooK84Qvl5wWS4CnaE62Es";
 export default function HomePage() {
   const [videos, setVideos] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [nextPageToken, setNextPageToken] = useState(null);
 
-  // mode: 'popular' or 'search'; searchQuery holds the current query
+  // mode: 'popular' or 'search'; searchQuery holds the current (submitted) query
   const [mode, setMode] = useState("popular");
   const [searchQuery, setSearchQuery] = useState("");
+  const [hoveredVideoId, setHoveredVideoId] = useState(null);
+  const suggestionsRef = useRef(null);
 
   // Calculate relative time (e.g., “10 hours ago”) from an ISO string
   const getRelativeTime = (isoString) => {
@@ -53,7 +56,6 @@ export default function HomePage() {
       setLoading(true);
       try {
         if (mode === "popular") {
-          // Fetch most popular with snippet & statistics
           const url = new URL("https://www.googleapis.com/youtube/v3/videos");
           url.searchParams.set("part", "snippet,statistics");
           url.searchParams.set("chart", "mostPopular");
@@ -116,7 +118,6 @@ export default function HomePage() {
             }
             setNextPageToken(newNextPage);
           } else {
-            // No matching IDs; reset if not loadMore
             if (!isLoadMore) setVideos([]);
             setNextPageToken(newNextPage);
           }
@@ -159,24 +160,117 @@ export default function HomePage() {
     if (!term) return;
     setMode("search");
     setSearchQuery(term);
+    setSuggestions([]);
+  };
+
+  // Fetch suggestions whenever searchTerm changes
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    if (!searchTerm.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    const fetchSuggestions = async () => {
+      try {
+        const response = await fetch(
+          `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(
+            searchTerm
+          )}`,
+          { signal }
+        );
+        const data = await response.json();
+        // data[1] is an array of suggestion strings
+        setSuggestions(Array.isArray(data[1]) ? data[1] : []);
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.error("Suggestion fetch error:", err);
+        }
+      }
+    };
+
+    // Slight delay to avoid too many requests
+    const timeoutId = setTimeout(fetchSuggestions, 200);
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [searchTerm]);
+
+  // Hide suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target)
+      ) {
+        setSuggestions([]);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Reset to “popular” home
+  const goHome = () => {
+    setMode("popular");
+    setSearchTerm("");
+    setSearchQuery("");
+    setSuggestions([]);
   };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header / Search Bar */}
-      <header className="sticky top-0 z-10 bg-gray-800 p-4 flex items-center">
-        <h1 className="text-2xl font-semibold mr-6">YouTube Clone</h1>
+      <header className="sticky top-0 z-10 bg-gray-800 p-4 flex items-center space-x-4">
+        <h1 className="text-2xl font-semibold">YouTube Clone</h1>
+
+        {mode === "search" && (
+          <button
+            onClick={goHome}
+            className="text-gray-300 hover:text-white bg-gray-700 px-3 py-1 rounded"
+          >
+            Home
+          </button>
+        )}
+
         <form
           onSubmit={handleSearch}
-          className="flex flex-1 max-w-lg items-center"
+          className="flex flex-1 max-w-lg items-center relative"
         >
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search"
-            className="w-full rounded-l-md px-3 py-2 bg-gray-700 text-white placeholder-gray-400 focus:outline-none"
-          />
+          <div className="relative w-full" ref={suggestionsRef}>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search"
+              className="w-full rounded-l-md px-3 py-2 bg-gray-700 text-white placeholder-gray-400 focus:outline-none"
+              autoComplete="off"
+            />
+            {suggestions.length > 0 && (
+              <ul className="absolute top-full left-0 w-full bg-white text-black mt-1 rounded shadow-lg z-20 max-h-60 overflow-y-auto">
+                {suggestions.map((sugg) => (
+                  <li
+                    key={sugg}
+                    className="px-3 py-2 hover:bg-gray-200 cursor-pointer"
+                    onClick={() => {
+                      setSearchTerm(sugg);
+                      setMode("search");
+                      setSearchQuery(sugg);
+                      setSuggestions([]);
+                    }}
+                  >
+                    {sugg}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <button
             type="submit"
             className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-r-md"
@@ -202,12 +296,26 @@ export default function HomePage() {
 
               return (
                 <Link to={`/watch/${vidId}`} key={vidId} className="group">
-                  <div className="relative pb-[56.25%] bg-black overflow-hidden rounded-lg">
-                    <img
-                      src={snippet.thumbnails.high.url}
-                      alt={snippet.title}
-                      className="absolute top-0 left-0 w-full h-full object-cover group-hover:opacity-90 transition-opacity"
-                    />
+                  <div
+                    className="relative pb-[56.25%] bg-black overflow-hidden rounded-lg"
+                    onMouseEnter={() => setHoveredVideoId(vidId)}
+                    onMouseLeave={() => setHoveredVideoId(null)}
+                  >
+                    {hoveredVideoId === vidId ? (
+                      <iframe
+                        style={{ pointerEvents: "none" }}
+                        className="absolute top-0 left-0 w-full h-full object-cover"
+                        src={`https://www.youtube.com/embed/${vidId}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&loop=1&playlist=${vidId}`}
+                        allow="autoplay"
+                        title="preview"
+                      />
+                    ) : (
+                      <img
+                        src={snippet.thumbnails.high.url}
+                        alt={snippet.title}
+                        className="absolute top-0 left-0 w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                      />
+                    )}
                   </div>
                   <div className="mt-2 flex">
                     <img
