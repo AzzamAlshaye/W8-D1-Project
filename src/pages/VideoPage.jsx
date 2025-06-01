@@ -1,20 +1,107 @@
 // src/pages/VideoPage.jsx
-import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router";
-import axios from "axios";
 
-const API_KEY = "AIzaSyBchUlb9-p61sooK84Qvl5wWS4CnaE62Es";
+import React, { useState, useEffect, useRef } from "react";
+import { useParams, Link, useNavigate, useLocation } from "react-router";
+import axios from "axios";
+import Navbar from "../components/Navbar";
+
+const API_KEY = "AIzaSyBBro6atDbmlP2ypqbIEIdmDTzmFEb3vFQ";
 const COMMENTS_API = "https://683c222328a0b0f2fdc64548.mockapi.io/comments";
 
 export default function VideoPage() {
   const { videoId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const suggestionsRef = useRef(null);
+
+  // ────────── Navbar / Search State ──────────
+  const urlParams = new URLSearchParams(location.search);
+  const initialQuery = urlParams.get("search_query") || "";
+
+  const [searchTerm, setSearchTerm] = useState(initialQuery);
+  const [suggestions, setSuggestions] = useState([]);
+  const [mode] = useState(initialQuery ? "search" : "popular");
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const term = searchTerm.trim();
+    if (!term) return;
+    navigate(`/?search_query=${encodeURIComponent(term)}`);
+    setSuggestions([]);
+  };
+
+  const handleSuggestionClick = (sugg) => {
+    setSearchTerm(sugg);
+    navigate(`/?search_query=${encodeURIComponent(sugg)}`);
+    setSuggestions([]);
+  };
+
+  const goHome = () => {
+    navigate("/");
+    setSearchTerm("");
+    setSuggestions([]);
+  };
+
+  // Fetch YouTube autocomplete suggestions
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    if (!searchTerm.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    const fetchSuggestions = async () => {
+      try {
+        const response = await fetch(
+          `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(
+            searchTerm
+          )}`,
+          { signal }
+        );
+        if (!response.ok) {
+          console.warn("Suggestion fetch failed:", response.status);
+          setSuggestions([]);
+          return;
+        }
+        const data = await response.json();
+        setSuggestions(Array.isArray(data[1]) ? data[1] : []);
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.error("Suggestion fetch error:", err);
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(fetchSuggestions, 200);
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [searchTerm]);
+
+  // Hide suggestions on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target)
+      ) {
+        setSuggestions([]);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // ────────── Video / Related / Comments State ──────────
   const [videoDetails, setVideoDetails] = useState(null);
   const [channelImage, setChannelImage] = useState(null);
   const [relatedVideos, setRelatedVideos] = useState([]);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
 
-  // Loading flags
   const [loadingVideo, setLoadingVideo] = useState(true);
   const [loadingRelated, setLoadingRelated] = useState(true);
   const [loadingComments, setLoadingComments] = useState(true);
@@ -24,7 +111,7 @@ export default function VideoPage() {
   const currentUserId = localStorage.getItem("userId");
 
   useEffect(() => {
-    // Reset state whenever videoId changes
+    // Reset state on videoId change
     setVideoDetails(null);
     setChannelImage(null);
     setRelatedVideos([]);
@@ -34,86 +121,93 @@ export default function VideoPage() {
     setLoadingRelated(true);
     setLoadingComments(true);
 
-    // 1) Fetch main video details (snippet + statistics)
-    fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}&key=${API_KEY}`
-    )
-      .then((res) => res.json())
-      .then((data) => {
+    // 1) Fetch main video details
+    (async () => {
+      try {
+        const resp = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}&key=${API_KEY}`
+        );
+        if (!resp.ok) {
+          console.warn("YouTube video fetch failed:", resp.status);
+          setLoadingVideo(false);
+          return;
+        }
+        const data = await resp.json();
         if (data.items && data.items.length > 0) {
           const video = data.items[0];
           setVideoDetails(video);
 
           // Fetch channel thumbnail
           const channelId = video.snippet.channelId;
-          return fetch(
+          const chResp = await fetch(
             `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${API_KEY}`
           );
+          if (!chResp.ok) {
+            console.warn("YouTube channel fetch failed:", chResp.status);
+          } else {
+            const chData = await chResp.json();
+            if (
+              chData.items &&
+              chData.items.length > 0 &&
+              chData.items[0].snippet.thumbnails
+            ) {
+              const thumbs = chData.items[0].snippet.thumbnails;
+              const url =
+                (thumbs.medium && thumbs.medium.url) || thumbs.default.url;
+              setChannelImage(url);
+            }
+          }
         } else {
           console.warn("No video items found for videoId =", videoId);
-          setLoadingVideo(false);
-          return Promise.reject("No video found");
         }
-      })
-      .then((chRes) => chRes.json())
-      .then((chData) => {
-        if (
-          chData.items &&
-          chData.items.length > 0 &&
-          chData.items[0].snippet.thumbnails
-        ) {
-          const thumbs = chData.items[0].snippet.thumbnails;
-          const url =
-            (thumbs.medium && thumbs.medium.url) || thumbs.default.url;
-          setChannelImage(url);
-        }
-      })
-      .catch((err) => {
-        if (err !== "No video found") {
-          console.error("Error during video + channel fetch:", err);
-        }
-      })
-      .finally(() => {
+      } catch (err) {
+        console.error("Error during video + channel fetch:", err);
+      } finally {
         setLoadingVideo(false);
-      });
+      }
+    })();
 
     // 2) Fetch related videos
-    fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${API_KEY}`
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.items && data.items.length > 0) {
-          const mapped = data.items
-            .map((item) => {
-              const vid = item.id.videoId;
-              return vid
-                ? {
-                    id: vid,
-                    snippet: item.snippet,
-                  }
-                : null;
-            })
-            .filter(Boolean);
-          setRelatedVideos(mapped);
-        } else {
-          console.warn("No related videos found for videoId =", videoId);
+    (async () => {
+      try {
+        const resp = await fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${API_KEY}`
+        );
+        if (!resp.ok) {
+          console.warn("YouTube related fetch failed:", resp.status);
           setRelatedVideos([]);
+        } else {
+          const data = await resp.json();
+          if (data.items && data.items.length > 0) {
+            const mapped = data.items
+              .map((item) => {
+                const vid = item.id.videoId;
+                return vid
+                  ? {
+                      id: vid,
+                      snippet: item.snippet,
+                    }
+                  : null;
+              })
+              .filter(Boolean);
+            setRelatedVideos(mapped);
+          } else {
+            console.warn("No related videos found for videoId =", videoId);
+            setRelatedVideos([]);
+          }
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Error fetching related videos:", err);
         setRelatedVideos([]);
-      })
-      .finally(() => {
+      } finally {
         setLoadingRelated(false);
-      });
+      }
+    })();
 
-    // 3) Fetch comments from MockAPI, filtered by videoId
+    // 3) Fetch comments from MockAPI, filtering by videoId
     axios
       .get(COMMENTS_API, { params: { videoId } })
       .then((resp) => {
-        // Ensure each comment has numeric counts and arrays
         const normalized = resp.data.map((c) => ({
           ...c,
           likeCount: Number(c.likeCount) || 0,
@@ -124,15 +218,20 @@ export default function VideoPage() {
         setComments(normalized);
       })
       .catch((err) => {
-        console.error("Error fetching comments:", err);
-        setComments([]);
+        if (err.response && err.response.status === 404) {
+          // Treat 404 as “no comments yet”
+          setComments([]);
+        } else {
+          console.error("Error fetching comments:", err);
+          setComments([]);
+        }
       })
       .finally(() => {
         setLoadingComments(false);
       });
   }, [videoId]);
 
-  // Handler to post a new comment
+  // ────────── Comment Handlers ──────────
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!isAuth) {
@@ -173,17 +272,13 @@ export default function VideoPage() {
     }
   };
 
-  // Handler for liking a comment (toggle on/off, enforce single reaction)
   const handleCommentLike = async (index) => {
     if (!isAuth) {
       console.warn("User not authenticated. Cannot like comment.");
       return;
     }
     const comment = comments[index];
-    if (!comment || !comment.id) {
-      console.warn("Cannot like: missing comment or comment.id", comment);
-      return;
-    }
+    if (!comment || !comment.id) return;
 
     const userId = currentUserId;
     const hasLiked = comment.likedBy.includes(userId);
@@ -195,15 +290,11 @@ export default function VideoPage() {
     let newDislikeCount = comment.dislikeCount;
 
     if (hasLiked) {
-      // User already liked → remove their like
       newLikedBy = newLikedBy.filter((u) => u !== userId);
       newLikeCount -= 1;
     } else {
-      // Add like
       newLikedBy.push(userId);
       newLikeCount += 1;
-
-      // If previously disliked, remove dislike
       if (hasDisliked) {
         newDislikedBy = newDislikedBy.filter((u) => u !== userId);
         newDislikeCount -= 1;
@@ -238,17 +329,13 @@ export default function VideoPage() {
     }
   };
 
-  // Handler for disliking a comment (toggle on/off, enforce single reaction)
   const handleCommentDislike = async (index) => {
     if (!isAuth) {
       console.warn("User not authenticated. Cannot dislike comment.");
       return;
     }
     const comment = comments[index];
-    if (!comment || !comment.id) {
-      console.warn("Cannot dislike: missing comment or comment.id", comment);
-      return;
-    }
+    if (!comment || !comment.id) return;
 
     const userId = currentUserId;
     const hasLiked = comment.likedBy.includes(userId);
@@ -260,15 +347,11 @@ export default function VideoPage() {
     let newDislikeCount = comment.dislikeCount;
 
     if (hasDisliked) {
-      // User already disliked → remove their dislike
       newDislikedBy = newDislikedBy.filter((u) => u !== userId);
       newDislikeCount -= 1;
     } else {
-      // Add dislike
       newDislikedBy.push(userId);
       newDislikeCount += 1;
-
-      // If previously liked, remove like
       if (hasLiked) {
         newLikedBy = newLikedBy.filter((u) => u !== userId);
         newLikeCount -= 1;
@@ -303,7 +386,7 @@ export default function VideoPage() {
     }
   };
 
-  // Show loader if any request is still pending
+  // While loading or videoDetails is missing, show full‐screen loader
   if (isLoading || !videoDetails) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
@@ -318,12 +401,17 @@ export default function VideoPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      {/* Top Bar */}
-      <header className="sticky top-0 z-10 bg-gray-800 p-4">
-        <Link to="/" className="text-white hover:underline">
-          ← Back to Home
-        </Link>
-      </header>
+      {/* ───────── Navbar ───────── */}
+      <Navbar
+        mode={mode}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        suggestions={suggestions}
+        suggestionsRef={suggestionsRef}
+        onSuggestionClick={handleSuggestionClick}
+        onSearchSubmit={handleSearch}
+        onHomeClick={goHome}
+      />
 
       <div className="flex flex-col lg:flex-row p-4 gap-6">
         {/* Left Column: Player, Info, Comments */}
@@ -362,7 +450,7 @@ export default function VideoPage() {
             </div>
           </div>
 
-          {/* Like/Dislike on the Video (informational) */}
+          {/* Like/Dislike (informational only) */}
           <div className="mt-4 flex items-center gap-6">
             <button className="flex items-center gap-1 text-gray-300 hover:text-white">
               <span className="text-lg">👍</span>

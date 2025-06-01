@@ -1,9 +1,9 @@
-// src/components/SearchResults.jsx
+// src/pages/video-page/SearchResults.jsx
 
 import React from "react";
 import { Link } from "react-router";
 
-// Move this out so it isn’t recreated every render
+// Move getRelativeTime out so it isn’t recreated on every render
 const getRelativeTime = (isoString) => {
   const published = new Date(isoString).getTime();
   const now = Date.now();
@@ -38,27 +38,37 @@ const getRelativeTime = (isoString) => {
 
 /**
  * Props:
- *  - videos: array of video objects from YouTube API (each { id: string, snippet, statistics })
- *  - channelIcons: { [channelId]: thumbnailURL }
- *  - hoveredVideoId, setHoveredVideoId: for hover‐preview iframe
+ *  - videos: array of video objects; default to [] if undefined
+ *  - channelIcons: { [channelId]: thumbnailURL }; default to {} if undefined
+ *  - hoveredVideoId, setHoveredVideoId: for hover‐preview behavior
  */
 export default function SearchResults({
-  videos,
-  channelIcons,
+  videos = [],
+  channelIcons = {},
   hoveredVideoId,
   setHoveredVideoId,
+  loading = false, // ← newly added prop
 }) {
+  const safeVideos = Array.isArray(videos) ? videos : [];
+
+  if (loading) {
+    return <p className="text-center mt-8 text-gray-400">Loading results…</p>;
+  }
+
+  if (safeVideos.length === 0) {
+    return <p className="text-center mt-8 text-gray-400">No results found.</p>;
+  }
+
   return (
-    <div className="flex flex-col gap-6">
-      {videos.map((video) => {
-        const vidId = video.id; // assume this is a string
+    <div className="space-y-6">
+      {safeVideos.map((video) => {
+        const vidId = video.id;
         const { snippet, statistics } = video;
         const publishedRelative = getRelativeTime(snippet.publishedAt);
         const viewCount = statistics?.viewCount
           ? Number(statistics.viewCount).toLocaleString()
           : "0";
 
-        // Fallback icon if channelIcons lacks this channelId
         const channelIconUrl =
           channelIcons[snippet.channelId] ||
           "https://www.youtube.com/s/desktop/placeholder.png";
@@ -67,11 +77,11 @@ export default function SearchResults({
           <Link
             to={`/watch/${vidId}`}
             key={vidId}
-            className="flex space-x-4 hover:bg-gray-800 p-2 rounded-md transition"
+            className="flex gap-4 items-start hover:bg-gray-800 p-3 rounded-md transition"
           >
-            {/* Left: medium thumbnail or hover‐preview */}
+            {/* Thumbnail */}
             <div
-              className="relative w-56 h-32 bg-black rounded-lg overflow-hidden flex-shrink-0"
+              className="relative w-40 h-24 bg-black rounded-lg overflow-hidden"
               onMouseEnter={() => setHoveredVideoId(vidId)}
               onMouseLeave={() => setHoveredVideoId(null)}
             >
@@ -92,31 +102,23 @@ export default function SearchResults({
               )}
             </div>
 
-            {/* Right: text details */}
-            <div className="flex-1 flex flex-col justify-between">
-              <div>
-                <h2 className="text-lg font-semibold line-clamp-2">
+            {/* Info */}
+            <div className="flex-1 flex gap-3">
+              <img
+                src={channelIconUrl}
+                alt={snippet.channelTitle}
+                className="w-10 h-10 rounded-full flex-shrink-0"
+              />
+              <div className="flex-1">
+                <h2 className="text-sm font-medium leading-tight line-clamp-2 text-white">
                   {snippet.title}
                 </h2>
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   {snippet.channelTitle}
                 </p>
-                <p className="text-sm text-gray-500">
+                <p className="text-xs text-gray-500 mt-1">
                   {viewCount} views • {publishedRelative}
                 </p>
-                <p className="mt-2 text-sm text-gray-300 line-clamp-2">
-                  {snippet.description}
-                </p>
-              </div>
-              <div className="flex items-center mt-2">
-                <img
-                  src={channelIconUrl}
-                  alt={snippet.channelTitle}
-                  className="w-8 h-8 rounded-full mr-2"
-                />
-                <span className="text-xs text-gray-400">
-                  {snippet.channelTitle}
-                </span>
               </div>
             </div>
           </Link>

@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router";
+import Navbar from "../components/Navbar"; // ← import the new Navbar
 import VideoGrid from "./video-page/VideoGrid";
 import SearchResults from "./video-page/SearchResults";
 
-const API_KEY = "AIzaSyBchUlb9-p61sooK84Qvl5wWS4CnaE62Es";
+const API_KEY = "AIzaSyBBro6atDbmlP2ypqbIEIdmDTzmFEb3vFQ";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ export default function HomePage() {
 
   const [hoveredVideoId, setHoveredVideoId] = useState(null);
 
-  // 3) A simple in‐memory cache for video details per ID (to avoid refetching details if we already have them this session)
+  // 3) In-memory cache for video details per ID
   const videoDetailsCache = useRef({}); // { videoId: videoObject, … }
 
   // Helper to compute relative time (“X hours ago”)
@@ -65,7 +66,7 @@ export default function HomePage() {
     return `${diffYears} year${diffYears !== 1 ? "s" : ""} ago`;
   };
 
-  // 4) Fetch videos (either popular or search) + fetch channel icons
+  // 4) Fetch videos (most popular or search) + fetch channel icons
   const fetchVideos = useCallback(
     async (isLoadMore = false) => {
       setLoading(true);
@@ -106,6 +107,7 @@ export default function HomePage() {
 
           const searchResp = await fetch(searchUrl.toString());
           const searchData = await searchResp.json();
+          console.log("YouTube searchData:", searchData);
           const searchItems = searchData.items || [];
           newNextPage = searchData.nextPageToken || null;
 
@@ -117,7 +119,7 @@ export default function HomePage() {
             const vidId = item.id.videoId;
             if (vidId) {
               if (videoDetailsCache.current[vidId]) {
-                // we already have the details cached—use it directly
+                // use cached details
                 detailsFromCache.push(videoDetailsCache.current[vidId]);
               } else {
                 idsToFetch.push(vidId);
@@ -159,7 +161,7 @@ export default function HomePage() {
         // 6) Fetch channel icons for those videos—only for channelIds not already in channelIcons
         const uniqueChannelIds = [
           ...new Set(fetchedItems.map((vid) => vid.snippet.channelId)),
-        ].filter((cid) => cid && !channelIcons[cid]); // filter out IDs we already have
+        ].filter((cid) => cid && !channelIcons[cid]);
 
         if (uniqueChannelIds.length > 0) {
           const channelsUrl = new URL(
@@ -239,10 +241,10 @@ export default function HomePage() {
     const term = searchTerm.trim();
     if (!term) return;
 
-    // 10a) Update the URL so it becomes “/?search_query=…”
+    // Update the URL so it becomes “/?search_query=…”
     navigate(`/?search_query=${encodeURIComponent(term)}`);
 
-    // 10b) Optimistically set mode & searchQuery
+    // Optimistically set mode & searchQuery (HomePage's effects will sync everything)
     setMode("search");
     setSearchQuery(term);
     setSuggestions([]);
@@ -306,85 +308,50 @@ export default function HomePage() {
     setSuggestions([]);
   };
 
+  // 14) When a suggestion is clicked:
+  const handleSuggestionClick = (sugg) => {
+    setSearchTerm(sugg);
+    navigate(`/?search_query=${encodeURIComponent(sugg)}`);
+    setMode("search");
+    setSearchQuery(sugg);
+    setSuggestions([]);
+  };
+
+  // HomePage.jsx
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      {/* ───────── Header / Search Bar ───────── */}
-      <header className="sticky top-0 z-10 bg-gray-800 p-4 flex items-center space-x-4">
-        <h1 className="text-2xl font-semibold">YouTube Clone</h1>
+      {/* ─── Navbar #1 ─── */}
+      <Navbar
+        mode={mode}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        suggestions={suggestions}
+        suggestionsRef={suggestionsRef}
+        onSuggestionClick={handleSuggestionClick}
+        onSearchSubmit={handleSearch}
+        onHomeClick={goHome}
+      />
 
-        {mode === "search" && searchQuery.trim() !== "" && (
-          <button
-            onClick={goHome}
-            className="text-gray-300 hover:text-white bg-gray-700 px-3 py-1 rounded"
-          >
-            Home
-          </button>
-        )}
-
-        <form
-          onSubmit={handleSearch}
-          className="flex flex-1 max-w-lg items-center relative"
-        >
-          <div className="relative w-full" ref={suggestionsRef}>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search"
-              className="w-full rounded-l-md px-3 py-2 bg-gray-700 text-white placeholder-gray-400 focus:outline-none"
-              autoComplete="off"
-            />
-            {suggestions.length > 0 && (
-              <ul className="absolute top-full left-0 w-full bg-white text-black mt-1 rounded shadow-lg z-20 max-h-60 overflow-y-auto">
-                {suggestions.map((sugg, idx) => (
-                  <li
-                    key={`${sugg}-${idx}`}
-                    className="px-3 py-2 hover:bg-gray-200 cursor-pointer"
-                    onClick={() => {
-                      setSearchTerm(sugg);
-                      navigate(`/?search_query=${encodeURIComponent(sugg)}`);
-                      setMode("search");
-                      setSearchQuery(sugg);
-                      setSuggestions([]);
-                    }}
-                  >
-                    {sugg}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <button
-            type="submit"
-            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-r-md"
-          >
-            Search
-          </button>
-        </form>
-      </header>
-
-      {/* ───────── Main Content ───────── */}
       <main className="p-4">
-        {videos.length === 0 && loading ? (
-          <p className="text-center mt-8">Loading...</p>
+        {mode === "search" ? (
+          <SearchResults />
         ) : (
-          <>
-            {mode === "search" && searchQuery.trim() !== "" ? (
-              <SearchResults
-                videos={videos}
-                channelIcons={channelIcons}
-                hoveredVideoId={hoveredVideoId}
-                setHoveredVideoId={setHoveredVideoId}
-              />
-            ) : (
-              <VideoGrid
-                videos={videos}
-                channelIcons={channelIcons}
-                hoveredVideoId={hoveredVideoId}
-                setHoveredVideoId={setHoveredVideoId}
-              />
-            )}
-          </>
+          /* VideoGrid also renders its own Navbar as #2 */
+          <VideoGrid
+            videos={videos}
+            channelIcons={channelIcons}
+            hoveredVideoId={hoveredVideoId}
+            setHoveredVideoId={setHoveredVideoId}
+            /* Passing down the exact same Navbar props into VideoGrid */
+            mode={mode}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            suggestions={suggestions}
+            suggestionsRef={suggestionsRef}
+            onSuggestionClick={handleSuggestionClick}
+            onSearchSubmit={handleSearch}
+            onHomeClick={goHome}
+          />
         )}
 
         {loading && videos.length > 0 && (
