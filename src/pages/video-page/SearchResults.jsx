@@ -3,11 +3,44 @@
 import React from "react";
 import { Link } from "react-router";
 
+// Move this out so it isn’t recreated every render
+const getRelativeTime = (isoString) => {
+  const published = new Date(isoString).getTime();
+  const now = Date.now();
+  const diffSeconds = Math.floor((now - published) / 1000);
+
+  if (diffSeconds < 60) {
+    return `${diffSeconds} second${diffSeconds !== 1 ? "s" : ""} ago`;
+  }
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) {
+    return `${diffMinutes} minute${diffMinutes !== 1 ? "s" : ""} ago`;
+  }
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
+  }
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) {
+    return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+  }
+  const diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks < 4) {
+    return `${diffWeeks} week${diffWeeks !== 1 ? "s" : ""} ago`;
+  }
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) {
+    return `${diffMonths} month${diffMonths !== 1 ? "s" : ""} ago`;
+  }
+  const diffYears = Math.floor(diffDays / 365);
+  return `${diffYears} year${diffYears !== 1 ? "s" : ""} ago`;
+};
+
 /**
  * Props:
- *  - videos: array of video objects from YouTube API
+ *  - videos: array of video objects from YouTube API (each { id: string, snippet, statistics })
  *  - channelIcons: { [channelId]: thumbnailURL }
- *  - hoveredVideoId, setHoveredVideoId: same hover logic
+ *  - hoveredVideoId, setHoveredVideoId: for hover‐preview iframe
  */
 export default function SearchResults({
   videos,
@@ -15,50 +48,17 @@ export default function SearchResults({
   hoveredVideoId,
   setHoveredVideoId,
 }) {
-  // Helper: relative timestamp
-  const getRelativeTime = (isoString) => {
-    const published = new Date(isoString).getTime();
-    const now = Date.now();
-    const diffSeconds = Math.floor((now - published) / 1000);
-
-    if (diffSeconds < 60) {
-      return `${diffSeconds} second${diffSeconds !== 1 ? "s" : ""} ago`;
-    }
-    const diffMinutes = Math.floor(diffSeconds / 60);
-    if (diffMinutes < 60) {
-      return `${diffMinutes} minute${diffMinutes !== 1 ? "s" : ""} ago`;
-    }
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) {
-      return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
-    }
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) {
-      return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
-    }
-    const diffWeeks = Math.floor(diffDays / 7);
-    if (diffWeeks < 4) {
-      return `${diffWeeks} week${diffWeeks !== 1 ? "s" : ""} ago`;
-    }
-    const diffMonths = Math.floor(diffDays / 30);
-    if (diffMonths < 12) {
-      return `${diffMonths} month${diffMonths !== 1 ? "s" : ""} ago`;
-    }
-    const diffYears = Math.floor(diffDays / 365);
-    return `${diffYears} year${diffYears !== 1 ? "s" : ""} ago`;
-  };
-
   return (
     <div className="flex flex-col gap-6">
-      {videos.map((video, index) => {
-        const vidId = video.id;
+      {videos.map((video) => {
+        const vidId = video.id; // assume this is a string
         const { snippet, statistics } = video;
         const publishedRelative = getRelativeTime(snippet.publishedAt);
         const viewCount = statistics?.viewCount
           ? Number(statistics.viewCount).toLocaleString()
           : "0";
 
-        // Channel icon (fallback)
+        // Fallback icon if channelIcons lacks this channelId
         const channelIconUrl =
           channelIcons[snippet.channelId] ||
           "https://www.youtube.com/s/desktop/placeholder.png";
@@ -66,11 +66,15 @@ export default function SearchResults({
         return (
           <Link
             to={`/watch/${vidId}`}
-            key={`${vidId}-${index}`}
+            key={vidId}
             className="flex space-x-4 hover:bg-gray-800 p-2 rounded-md transition"
           >
-            {/* Left: medium thumbnail */}
-            <div className="relative w-56 h-32 bg-black rounded-lg overflow-hidden flex-shrink-0">
+            {/* Left: medium thumbnail or hover‐preview */}
+            <div
+              className="relative w-56 h-32 bg-black rounded-lg overflow-hidden flex-shrink-0"
+              onMouseEnter={() => setHoveredVideoId(vidId)}
+              onMouseLeave={() => setHoveredVideoId(null)}
+            >
               {hoveredVideoId === vidId ? (
                 <iframe
                   style={{ pointerEvents: "none" }}

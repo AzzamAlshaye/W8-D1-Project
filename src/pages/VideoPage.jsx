@@ -189,48 +189,50 @@ export default function VideoPage() {
     const hasLiked = comment.likedBy.includes(userId);
     const hasDisliked = comment.dislikedBy.includes(userId);
 
-    let newLikedBy = comment.likedBy.slice();
-    let newDislikedBy = comment.dislikedBy.slice();
+    let newLikedBy = [...comment.likedBy];
+    let newDislikedBy = [...comment.dislikedBy];
     let newLikeCount = comment.likeCount;
     let newDislikeCount = comment.dislikeCount;
 
     if (hasLiked) {
       // User already liked → remove their like
-      newLikedBy = comment.likedBy.filter((u) => u !== userId);
-      newLikeCount = comment.likeCount - 1;
+      newLikedBy = newLikedBy.filter((u) => u !== userId);
+      newLikeCount -= 1;
     } else {
       // Add like
       newLikedBy.push(userId);
-      newLikeCount = comment.likeCount + 1;
+      newLikeCount += 1;
 
       // If previously disliked, remove dislike
       if (hasDisliked) {
-        newDislikedBy = comment.dislikedBy.filter((u) => u !== userId);
-        newDislikeCount = comment.dislikeCount - 1;
+        newDislikedBy = newDislikedBy.filter((u) => u !== userId);
+        newDislikeCount -= 1;
       }
     }
 
     try {
-      const resp = await axios.put(`${COMMENTS_API}/${comment.id}`, {
-        likeCount: newLikeCount,
-        dislikeCount: newDislikeCount,
-        likedBy: newLikedBy,
-        dislikedBy: newDislikedBy,
-      });
+      const { data: updated } = await axios.patch(
+        `${COMMENTS_API}/${comment.id}`,
+        {
+          likeCount: newLikeCount,
+          dislikeCount: newDislikeCount,
+          likedBy: newLikedBy,
+          dislikedBy: newDislikedBy,
+        }
+      );
       setComments((prev) =>
         prev.map((c, i) =>
           i === index
             ? {
                 ...c,
-                likeCount: newLikeCount,
-                dislikeCount: newDislikeCount,
-                likedBy: newLikedBy,
-                dislikedBy: newDislikedBy,
+                likeCount: updated.likeCount,
+                dislikeCount: updated.dislikeCount,
+                likedBy: updated.likedBy,
+                dislikedBy: updated.dislikedBy,
               }
             : c
         )
       );
-      console.log("PATCH RESPONSE (like toggle):", resp.data);
     } catch (err) {
       console.error("Error toggling likeCount:", err);
     }
@@ -252,48 +254,50 @@ export default function VideoPage() {
     const hasLiked = comment.likedBy.includes(userId);
     const hasDisliked = comment.dislikedBy.includes(userId);
 
-    let newLikedBy = comment.likedBy.slice();
-    let newDislikedBy = comment.dislikedBy.slice();
+    let newLikedBy = [...comment.likedBy];
+    let newDislikedBy = [...comment.dislikedBy];
     let newLikeCount = comment.likeCount;
     let newDislikeCount = comment.dislikeCount;
 
     if (hasDisliked) {
       // User already disliked → remove their dislike
-      newDislikedBy = comment.dislikedBy.filter((u) => u !== userId);
-      newDislikeCount = comment.dislikeCount - 1;
+      newDislikedBy = newDislikedBy.filter((u) => u !== userId);
+      newDislikeCount -= 1;
     } else {
       // Add dislike
       newDislikedBy.push(userId);
-      newDislikeCount = comment.dislikeCount + 1;
+      newDislikeCount += 1;
 
       // If previously liked, remove like
       if (hasLiked) {
-        newLikedBy = comment.likedBy.filter((u) => u !== userId);
-        newLikeCount = comment.likeCount - 1;
+        newLikedBy = newLikedBy.filter((u) => u !== userId);
+        newLikeCount -= 1;
       }
     }
 
     try {
-      const resp = await axios.put(`${COMMENTS_API}/${comment.id}`, {
-        likeCount: newLikeCount,
-        dislikeCount: newDislikeCount,
-        likedBy: newLikedBy,
-        dislikedBy: newDislikedBy,
-      });
+      const { data: updated } = await axios.patch(
+        `${COMMENTS_API}/${comment.id}`,
+        {
+          likeCount: newLikeCount,
+          dislikeCount: newDislikeCount,
+          likedBy: newLikedBy,
+          dislikedBy: newDislikedBy,
+        }
+      );
       setComments((prev) =>
         prev.map((c, i) =>
           i === index
             ? {
                 ...c,
-                likeCount: newLikeCount,
-                dislikeCount: newDislikeCount,
-                likedBy: newLikedBy,
-                dislikedBy: newDislikedBy,
+                likeCount: updated.likeCount,
+                dislikeCount: updated.dislikeCount,
+                likedBy: updated.likedBy,
+                dislikedBy: updated.dislikedBy,
               }
             : c
         )
       );
-      console.log("PATCH RESPONSE (dislike toggle):", resp.data);
     } catch (err) {
       console.error("Error toggling dislikeCount:", err);
     }
@@ -407,7 +411,7 @@ export default function VideoPage() {
 
                   return (
                     <div
-                      key={c.id || idx}
+                      key={c.id}
                       className="flex flex-col border-b border-gray-700 pb-4"
                     >
                       <div className="flex items-center justify-between">
@@ -420,6 +424,7 @@ export default function VideoPage() {
                       <div className="flex items-center gap-4 mt-2">
                         <button
                           onClick={() => handleCommentLike(idx)}
+                          aria-label={hasLiked ? "Remove like" : "Like comment"}
                           className={`flex items-center gap-1 text-sm ${
                             !isAuth
                               ? "text-gray-700 cursor-not-allowed"
@@ -433,6 +438,9 @@ export default function VideoPage() {
                         </button>
                         <button
                           onClick={() => handleCommentDislike(idx)}
+                          aria-label={
+                            hasDisliked ? "Remove dislike" : "Dislike comment"
+                          }
                           className={`flex items-center gap-1 text-sm ${
                             !isAuth
                               ? "text-gray-700 cursor-not-allowed"

@@ -17,26 +17,27 @@ export default function HomePage() {
   const initialQuery = urlParams.get("search_query") || "";
 
   // 2) State hooks
-  const [videos, setVideos] = useState([]);
-  const [channelIcons, setChannelIcons] = useState({});
+  const [videos, setVideos] = useState([]); // holds fetched video objects
+  const [channelIcons, setChannelIcons] = useState({}); // { channelId: thumbnailUrl, … }
   const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [nextPageToken, setNextPageToken] = useState(null);
 
   // mode: “popular” or “search”
-  // If there is a non‐empty initialQuery, start in search mode
   const [mode, setMode] = useState(initialQuery ? "search" : "popular");
   const [searchQuery, setSearchQuery] = useState(initialQuery);
 
   const [hoveredVideoId, setHoveredVideoId] = useState(null);
+
+  // 3) A simple in‐memory cache for video details per ID (to avoid refetching details if we already have them this session)
+  const videoDetailsCache = useRef({}); // { videoId: videoObject, … }
 
   // Helper to compute relative time (“X hours ago”)
   const getRelativeTime = (isoString) => {
     const published = new Date(isoString).getTime();
     const now = Date.now();
     const diffSeconds = Math.floor((now - published) / 1000);
-
     if (diffSeconds < 60) {
       return `${diffSeconds} second${diffSeconds !== 1 ? "s" : ""} ago`;
     }
@@ -64,7 +65,7 @@ export default function HomePage() {
     return `${diffYears} year${diffYears !== 1 ? "s" : ""} ago`;
   };
 
-  // 3) Fetch videos (either popular or search) + fetch channel icons
+  // 4) Fetch videos (either popular or search) + fetch channel icons
   const fetchVideos = useCallback(
     async (isLoadMore = false) => {
       setLoading(true);
@@ -108,26 +109,46 @@ export default function HomePage() {
           const searchItems = searchData.items || [];
           newNextPage = searchData.nextPageToken || null;
 
-          const ids = searchItems
-            .map((item) => item.id.videoId)
-            .filter(Boolean);
-          if (ids.length > 0) {
+          // Extract video IDs and only fetch details for IDs not already in cache
+          const idsToFetch = [];
+          const detailsFromCache = [];
+
+          searchItems.forEach((item) => {
+            const vidId = item.id.videoId;
+            if (vidId) {
+              if (videoDetailsCache.current[vidId]) {
+                // we already have the details cached—use it directly
+                detailsFromCache.push(videoDetailsCache.current[vidId]);
+              } else {
+                idsToFetch.push(vidId);
+              }
+            }
+          });
+
+          let detailsFetched = [];
+          if (idsToFetch.length > 0) {
             const detailsUrl = new URL(
               "https://www.googleapis.com/youtube/v3/videos"
             );
             detailsUrl.searchParams.set("part", "snippet,statistics");
-            detailsUrl.searchParams.set("id", ids.join(","));
+            detailsUrl.searchParams.set("id", idsToFetch.join(","));
             detailsUrl.searchParams.set("key", API_KEY);
 
             const detailsResp = await fetch(detailsUrl.toString());
             const detailsData = await detailsResp.json();
-            fetchedItems = detailsData.items || [];
-          } else {
-            fetchedItems = [];
+            detailsFetched = detailsData.items || [];
+
+            // Cache each fetched video’s details
+            detailsFetched.forEach((vid) => {
+              videoDetailsCache.current[vid.id] = vid;
+            });
           }
+
+          // Combine cached + newly fetched details
+          fetchedItems = [...detailsFromCache, ...detailsFetched];
         }
 
-        // 4) Update videos state
+        // 5) Update videos state
         if (isLoadMore) {
           setVideos((prev) => [...prev, ...fetchedItems]);
         } else {
@@ -135,10 +156,10 @@ export default function HomePage() {
         }
         setNextPageToken(newNextPage);
 
-        // 5) Fetch channel icons for those videos
+        // 6) Fetch channel icons for those videos—only for channelIds not already in channelIcons
         const uniqueChannelIds = [
           ...new Set(fetchedItems.map((vid) => vid.snippet.channelId)),
-        ].filter(Boolean);
+        ].filter((cid) => cid && !channelIcons[cid]); // filter out IDs we already have
 
         if (uniqueChannelIds.length > 0) {
           const channelsUrl = new URL(
@@ -152,6 +173,7 @@ export default function HomePage() {
           const channelsData = await channelsResp.json();
           const channelsItems = channelsData.items || [];
 
+          // Build a map of new icons
           const newIcons = {};
           channelsItems.forEach((channel) => {
             const cid = channel.id;
@@ -161,6 +183,7 @@ export default function HomePage() {
             }
           });
 
+          // Merge into state
           setChannelIcons((prev) => ({ ...prev, ...newIcons }));
         }
       } catch (err) {
@@ -169,18 +192,17 @@ export default function HomePage() {
         setLoading(false);
       }
     },
-    [mode, nextPageToken, searchQuery]
+    [mode, nextPageToken, searchQuery, channelIcons]
   );
 
-  // 6) On mount — or whenever mode/searchQuery changes — fetch first page
+  // 7) On mount — or whenever mode/searchQuery changes — fetch first page
   useEffect(() => {
     setNextPageToken(null);
     fetchVideos(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, searchQuery]);
 
-  // 7) Sync mode & searchTerm whenever the URL’s “search_query” param changes
-  //    (this catches the browser Back/Forward buttons)
+  // 8) Sync mode & searchTerm whenever the URL’s “search_query” param changes
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const q = params.get("search_query") || "";
@@ -196,7 +218,7 @@ export default function HomePage() {
     }
   }, [location.search]);
 
-  // 8) Infinite scroll: load more when near bottom
+  // 9) Infinite scroll: load more when near bottom
   useEffect(() => {
     const handleScroll = () => {
       if (loading || !nextPageToken) return;
@@ -211,22 +233,22 @@ export default function HomePage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [loading, nextPageToken, fetchVideos]);
 
-  // 9) Handle search form submission
+  // 10) Handle search form submission
   const handleSearch = (e) => {
     e.preventDefault();
     const term = searchTerm.trim();
     if (!term) return;
 
-    // 9a) Update the URL so it becomes “/?search_query=…”
+    // 10a) Update the URL so it becomes “/?search_query=…”
     navigate(`/?search_query=${encodeURIComponent(term)}`);
 
-    // 9b) Optimistically set mode & searchQuery
+    // 10b) Optimistically set mode & searchQuery
     setMode("search");
     setSearchQuery(term);
     setSuggestions([]);
   };
 
-  // 10) Fetch autocomplete suggestions (YouTube “type‐ahead”) whenever searchTerm changes
+  // 11) Fetch autocomplete suggestions (YouTube “type-ahead”) whenever searchTerm changes
   useEffect(() => {
     const controller = new AbortController();
     const signal = controller.signal;
@@ -253,6 +275,7 @@ export default function HomePage() {
       }
     };
 
+    // Debounce 200ms
     const timeoutId = setTimeout(fetchSuggestions, 200);
     return () => {
       clearTimeout(timeoutId);
@@ -260,7 +283,7 @@ export default function HomePage() {
     };
   }, [searchTerm]);
 
-  // 11) Hide suggestions when clicking outside
+  // 12) Hide suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -274,7 +297,7 @@ export default function HomePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 12) “Home” button: clear the query param, revert to popular
+  // 13) “Home” button: clear the query param, revert to popular
   const goHome = () => {
     navigate("/");
     setMode("popular");
