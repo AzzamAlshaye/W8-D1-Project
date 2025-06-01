@@ -8,7 +8,6 @@ const getRelativeTime = (isoString) => {
   const published = new Date(isoString).getTime();
   const now = Date.now();
   const diffSeconds = Math.floor((now - published) / 1000);
-
   if (diffSeconds < 60) {
     return `${diffSeconds} second${diffSeconds !== 1 ? "s" : ""} ago`;
   }
@@ -38,16 +37,20 @@ const getRelativeTime = (isoString) => {
 
 /**
  * Props:
- *  - videos: array of video objects; default to [] if undefined
- *  - channelIcons: { [channelId]: thumbnailURL }; default to {} if undefined
+ *  - videos: array of video objects; defaults to [] if undefined
+ *  - channelIcons: { [channelId]: thumbnailURL }; defaults to {} if undefined
  *  - hoveredVideoId, setHoveredVideoId: for hover‐preview behavior
+ *  - loading: boolean indicating fetch in progress; defaults to false
+ *
+ * This component simply displays up to 50 videos from the passed‐in array.
+ * It does not fetch or load more on scroll—API is called once by the parent.
  */
 export default function SearchResults({
   videos = [],
   channelIcons = {},
   hoveredVideoId,
   setHoveredVideoId,
-  loading = false, // ← newly added prop
+  loading = false,
 }) {
   const safeVideos = Array.isArray(videos) ? videos : [];
 
@@ -59,9 +62,12 @@ export default function SearchResults({
     return <p className="text-center mt-8 text-gray-400">No results found.</p>;
   }
 
+  // Only show the first 50 results
+  const displayVideos = safeVideos.slice(0, 50);
+
   return (
     <div className="space-y-6">
-      {safeVideos.map((video) => {
+      {displayVideos.map((video) => {
         const vidId = video.id;
         const { snippet, statistics } = video;
         const publishedRelative = getRelativeTime(snippet.publishedAt);

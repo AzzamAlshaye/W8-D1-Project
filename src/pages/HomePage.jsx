@@ -80,7 +80,7 @@ export default function HomePage() {
           const url = new URL("https://www.googleapis.com/youtube/v3/videos");
           url.searchParams.set("part", "snippet,statistics");
           url.searchParams.set("chart", "mostPopular");
-          url.searchParams.set("maxResults", "20");
+          url.searchParams.set("maxResults", "50");
           url.searchParams.set("regionCode", "SA");
           url.searchParams.set("key", API_KEY);
           if (isLoadMore && nextPageToken) {
@@ -97,7 +97,7 @@ export default function HomePage() {
             "https://www.googleapis.com/youtube/v3/search"
           );
           searchUrl.searchParams.set("part", "snippet");
-          searchUrl.searchParams.set("maxResults", "20");
+          searchUrl.searchParams.set("maxResults", "50");
           searchUrl.searchParams.set("type", "video");
           searchUrl.searchParams.set("q", searchQuery);
           searchUrl.searchParams.set("key", API_KEY);
@@ -222,6 +222,9 @@ export default function HomePage() {
 
   // 9) Infinite scroll: load more when near bottom
   useEffect(() => {
+    // Only attach infinite‐scroll when in "popular" mode
+    if (mode !== "popular") return;
+
     const handleScroll = () => {
       if (loading || !nextPageToken) return;
       if (
@@ -231,9 +234,10 @@ export default function HomePage() {
         fetchVideos(true);
       }
     };
+
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [loading, nextPageToken, fetchVideos]);
+  }, [mode, loading, nextPageToken, fetchVideos]);
 
   // 10) Handle search form submission
   const handleSearch = (e) => {
@@ -334,7 +338,13 @@ export default function HomePage() {
 
       <main className="p-4">
         {mode === "search" ? (
-          <SearchResults />
+          <SearchResults
+            videos={videos}
+            channelIcons={channelIcons}
+            hoveredVideoId={hoveredVideoId}
+            setHoveredVideoId={setHoveredVideoId}
+            loading={loading}
+          />
         ) : (
           /* VideoGrid also renders its own Navbar as #2 */
           <VideoGrid
