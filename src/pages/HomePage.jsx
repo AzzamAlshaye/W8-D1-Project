@@ -1,4 +1,5 @@
 // src/pages/HomePage.jsx
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router";
 
@@ -6,6 +7,7 @@ const API_KEY = "AIzaSyBchUlb9-p61sooK84Qvl5wWS4CnaE62Es";
 
 export default function HomePage() {
   const [videos, setVideos] = useState([]);
+  const [channelIcons, setChannelIcons] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -50,12 +52,18 @@ export default function HomePage() {
     return `${diffYears} year${diffYears !== 1 ? "s" : ""} ago`;
   };
 
-  // Fetch videos: if isLoadMore, append; else replace.
+  // Fetch videos; if isLoadMore, append; else replace.
+  // After fetching videos, we immediately collect channelIds and fetch their thumbnails.
   const fetchVideos = useCallback(
     async (isLoadMore = false) => {
       setLoading(true);
+
       try {
+        let fetchedItems = [];
+        let newNextPage = null;
+
         if (mode === "popular") {
+          // 1) Fetch “Most Popular” videos
           const url = new URL("https://www.googleapis.com/youtube/v3/videos");
           url.searchParams.set("part", "snippet,statistics");
           url.searchParams.set("chart", "mostPopular");
@@ -68,17 +76,11 @@ export default function HomePage() {
 
           const resp = await fetch(url.toString());
           const data = await resp.json();
-          const items = data.items || [];
-
-          if (isLoadMore) {
-            setVideos((prev) => [...prev, ...items]);
-          } else {
-            setVideos(items);
-          }
-          setNextPageToken(data.nextPageToken || null);
+          fetchedItems = data.items || [];
+          newNextPage = data.nextPageToken || null;
         } else {
-          // SEARCH mode: 1) call search endpoint
-          let searchUrl = new URL(
+          // 2) SEARCH mode: first call search endpoint
+          const searchUrl = new URL(
             "https://www.googleapis.com/youtube/v3/search"
           );
           searchUrl.searchParams.set("part", "snippet");
@@ -93,13 +95,13 @@ export default function HomePage() {
           const searchResp = await fetch(searchUrl.toString());
           const searchData = await searchResp.json();
           const searchItems = searchData.items || [];
-          const newNextPage = searchData.nextPageToken || null;
+          newNextPage = searchData.nextPageToken || null;
 
-          // 2) Extract IDs and call videos endpoint for details
+          // 3) Extract IDs, then call videos endpoint for details
           const ids = searchItems
             .map((item) => item.id.videoId)
             .filter(Boolean);
-          if (ids.length) {
+          if (ids.length > 0) {
             const detailsUrl = new URL(
               "https://www.googleapis.com/youtube/v3/videos"
             );
@@ -109,21 +111,54 @@ export default function HomePage() {
 
             const detailsResp = await fetch(detailsUrl.toString());
             const detailsData = await detailsResp.json();
-            const detailItems = detailsData.items || [];
-
-            if (isLoadMore) {
-              setVideos((prev) => [...prev, ...detailItems]);
-            } else {
-              setVideos(detailItems);
-            }
-            setNextPageToken(newNextPage);
+            fetchedItems = detailsData.items || [];
           } else {
-            if (!isLoadMore) setVideos([]);
-            setNextPageToken(newNextPage);
+            fetchedItems = [];
           }
         }
+
+        // 4) Update `videos` state (append or replace)
+        if (isLoadMore) {
+          setVideos((prev) => [...prev, ...fetchedItems]);
+        } else {
+          setVideos(fetchedItems);
+        }
+        setNextPageToken(newNextPage);
+
+        // 5) AFTER we have all fetchedItems, gather their channelIds
+        //    and make a Channels API call to get each channel's thumbnail
+        const uniqueChannelIds = [
+          ...new Set(fetchedItems.map((vid) => vid.snippet.channelId)),
+        ].filter(Boolean);
+
+        if (uniqueChannelIds.length > 0) {
+          // Build the URL for channels.list
+          const channelsUrl = new URL(
+            "https://www.googleapis.com/youtube/v3/channels"
+          );
+          channelsUrl.searchParams.set("part", "snippet");
+          channelsUrl.searchParams.set("id", uniqueChannelIds.join(","));
+          channelsUrl.searchParams.set("key", API_KEY);
+
+          const channelsResp = await fetch(channelsUrl.toString());
+          const channelsData = await channelsResp.json();
+          const channelsItems = channelsData.items || [];
+
+          // Build a mapping: channelId → thumbnailURL
+          const newIcons = {};
+          channelsItems.forEach((channel) => {
+            const cid = channel.id;
+            const thumbUrl = channel.snippet.thumbnails?.default?.url || "";
+            if (cid && thumbUrl) {
+              newIcons[cid] = thumbUrl;
+            }
+          });
+
+          // Merge with any existing icons (so “load more” keeps older entries)
+          setChannelIcons((prev) => ({ ...prev, ...newIcons }));
+        }
       } catch (err) {
-        console.error("Error fetching videos:", err);
+        console.error("Error fetching videos or channels:", err);
       } finally {
         setLoading(false);
       }
@@ -163,7 +198,7 @@ export default function HomePage() {
     setSuggestions([]);
   };
 
-  // Fetch suggestions whenever searchTerm changes
+  // Fetch “Search Suggestions” whenever searchTerm changes
   useEffect(() => {
     const controller = new AbortController();
     const signal = controller.signal;
@@ -191,9 +226,7 @@ export default function HomePage() {
       }
     };
 
-    // Slight delay to avoid too many requests
     const timeoutId = setTimeout(fetchSuggestions, 200);
-
     return () => {
       clearTimeout(timeoutId);
       controller.abort();
@@ -211,9 +244,7 @@ export default function HomePage() {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Reset to “popular” home
@@ -294,6 +325,11 @@ export default function HomePage() {
                 ? Number(statistics.viewCount).toLocaleString()
                 : "0";
 
+              // Get the channel icon from our state (fallback to a  placeholder if not yet loaded)
+              const channelIconUrl =
+                channelIcons[snippet.channelId] ||
+                "https://www.youtube.com/s/desktop/placeholder.png";
+
               return (
                 <Link to={`/watch/${vidId}`} key={vidId} className="group">
                   <div
@@ -318,8 +354,9 @@ export default function HomePage() {
                     )}
                   </div>
                   <div className="mt-2 flex">
+                    {/* Use the fetched channel icon here */}
                     <img
-                      src={snippet.thumbnails.default.url}
+                      src={channelIconUrl}
                       alt={snippet.channelTitle}
                       className="w-10 h-10 rounded-full"
                     />
