@@ -1,25 +1,37 @@
 // src/pages/HomePage.jsx
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Link } from "react-router";
+import { useNavigate, useLocation } from "react-router";
+import VideoGrid from "./video-page/VideoGrid";
+import SearchResults from "./video-page/SearchResults";
 
 const API_KEY = "AIzaSyBchUlb9-p61sooK84Qvl5wWS4CnaE62Es";
 
 export default function HomePage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const suggestionsRef = useRef(null);
+
+  // 1) Parse “search_query” from URL on mount / location change
+  const urlParams = new URLSearchParams(location.search);
+  const initialQuery = urlParams.get("search_query") || "";
+
+  // 2) State hooks
   const [videos, setVideos] = useState([]);
   const [channelIcons, setChannelIcons] = useState({});
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [nextPageToken, setNextPageToken] = useState(null);
 
-  // mode: 'popular' or 'search'; searchQuery holds the current (submitted) query
-  const [mode, setMode] = useState("popular");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [hoveredVideoId, setHoveredVideoId] = useState(null);
-  const suggestionsRef = useRef(null);
+  // mode: “popular” or “search”
+  // If there is a non‐empty initialQuery, start in search mode
+  const [mode, setMode] = useState(initialQuery ? "search" : "popular");
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
 
-  // Calculate relative time (e.g., “10 hours ago”) from an ISO string
+  const [hoveredVideoId, setHoveredVideoId] = useState(null);
+
+  // Helper to compute relative time (“X hours ago”)
   const getRelativeTime = (isoString) => {
     const published = new Date(isoString).getTime();
     const now = Date.now();
@@ -52,8 +64,7 @@ export default function HomePage() {
     return `${diffYears} year${diffYears !== 1 ? "s" : ""} ago`;
   };
 
-  // Fetch videos; if isLoadMore, append; else replace.
-  // After fetching videos, we gather channelIds and fetch their thumbnails.
+  // 3) Fetch videos (either popular or search) + fetch channel icons
   const fetchVideos = useCallback(
     async (isLoadMore = false) => {
       setLoading(true);
@@ -63,7 +74,7 @@ export default function HomePage() {
         let newNextPage = null;
 
         if (mode === "popular") {
-          // 1) Fetch “Most Popular” videos
+          // ──────────────── Most Popular ────────────────
           const url = new URL("https://www.googleapis.com/youtube/v3/videos");
           url.searchParams.set("part", "snippet,statistics");
           url.searchParams.set("chart", "mostPopular");
@@ -79,7 +90,7 @@ export default function HomePage() {
           fetchedItems = data.items || [];
           newNextPage = data.nextPageToken || null;
         } else {
-          // 2) SEARCH mode: first call search endpoint
+          // ──────────────── Search Mode ────────────────
           const searchUrl = new URL(
             "https://www.googleapis.com/youtube/v3/search"
           );
@@ -97,7 +108,6 @@ export default function HomePage() {
           const searchItems = searchData.items || [];
           newNextPage = searchData.nextPageToken || null;
 
-          // 3) Extract IDs, then call videos endpoint for details
           const ids = searchItems
             .map((item) => item.id.videoId)
             .filter(Boolean);
@@ -117,7 +127,7 @@ export default function HomePage() {
           }
         }
 
-        // 4) Update `videos` state
+        // 4) Update videos state
         if (isLoadMore) {
           setVideos((prev) => [...prev, ...fetchedItems]);
         } else {
@@ -125,7 +135,7 @@ export default function HomePage() {
         }
         setNextPageToken(newNextPage);
 
-        // 5) Fetch channel icons
+        // 5) Fetch channel icons for those videos
         const uniqueChannelIds = [
           ...new Set(fetchedItems.map((vid) => vid.snippet.channelId)),
         ].filter(Boolean);
@@ -162,14 +172,31 @@ export default function HomePage() {
     [mode, nextPageToken, searchQuery]
   );
 
-  // On mount or when mode/searchQuery changes, reset pagination and fetch first batch
+  // 6) On mount — or whenever mode/searchQuery changes — fetch first page
   useEffect(() => {
     setNextPageToken(null);
     fetchVideos(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, searchQuery]);
 
-  // Infinite scroll: load more when near bottom
+  // 7) Sync mode & searchTerm whenever the URL’s “search_query” param changes
+  //    (this catches the browser Back/Forward buttons)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const q = params.get("search_query") || "";
+
+    if (q.trim() !== "") {
+      setMode("search");
+      setSearchQuery(q);
+      setSearchTerm(q);
+    } else {
+      setMode("popular");
+      setSearchQuery("");
+      setSearchTerm("");
+    }
+  }, [location.search]);
+
+  // 8) Infinite scroll: load more when near bottom
   useEffect(() => {
     const handleScroll = () => {
       if (loading || !nextPageToken) return;
@@ -184,17 +211,22 @@ export default function HomePage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [loading, nextPageToken, fetchVideos]);
 
-  // Handle search form submission
+  // 9) Handle search form submission
   const handleSearch = (e) => {
     e.preventDefault();
     const term = searchTerm.trim();
     if (!term) return;
+
+    // 9a) Update the URL so it becomes “/?search_query=…”
+    navigate(`/?search_query=${encodeURIComponent(term)}`);
+
+    // 9b) Optimistically set mode & searchQuery
     setMode("search");
     setSearchQuery(term);
     setSuggestions([]);
   };
 
-  // Fetch “Search Suggestions” whenever searchTerm changes
+  // 10) Fetch autocomplete suggestions (YouTube “type‐ahead”) whenever searchTerm changes
   useEffect(() => {
     const controller = new AbortController();
     const signal = controller.signal;
@@ -213,7 +245,6 @@ export default function HomePage() {
           { signal }
         );
         const data = await response.json();
-        // data[1] is an array of suggestion strings
         setSuggestions(Array.isArray(data[1]) ? data[1] : []);
       } catch (err) {
         if (err.name !== "AbortError") {
@@ -229,7 +260,7 @@ export default function HomePage() {
     };
   }, [searchTerm]);
 
-  // Hide suggestions when clicking outside
+  // 11) Hide suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -243,8 +274,9 @@ export default function HomePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Reset to “popular” home
+  // 12) “Home” button: clear the query param, revert to popular
   const goHome = () => {
+    navigate("/");
     setMode("popular");
     setSearchTerm("");
     setSearchQuery("");
@@ -253,11 +285,11 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header / Search Bar */}
+      {/* ───────── Header / Search Bar ───────── */}
       <header className="sticky top-0 z-10 bg-gray-800 p-4 flex items-center space-x-4">
         <h1 className="text-2xl font-semibold">YouTube Clone</h1>
 
-        {mode === "search" && (
+        {mode === "search" && searchQuery.trim() !== "" && (
           <button
             onClick={goHome}
             className="text-gray-300 hover:text-white bg-gray-700 px-3 py-1 rounded"
@@ -287,6 +319,7 @@ export default function HomePage() {
                     className="px-3 py-2 hover:bg-gray-200 cursor-pointer"
                     onClick={() => {
                       setSearchTerm(sugg);
+                      navigate(`/?search_query=${encodeURIComponent(sugg)}`);
                       setMode("search");
                       setSearchQuery(sugg);
                       setSuggestions([]);
@@ -307,77 +340,30 @@ export default function HomePage() {
         </form>
       </header>
 
-      {/* Video Grid */}
+      {/* ───────── Main Content ───────── */}
       <main className="p-4">
         {videos.length === 0 && loading ? (
           <p className="text-center mt-8">Loading...</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {videos.map((video, index) => {
-              const vidId = video.id;
-              const { snippet, statistics } = video;
-              const publishedRelative = getRelativeTime(snippet.publishedAt);
-              const viewCount = statistics?.viewCount
-                ? Number(statistics.viewCount).toLocaleString()
-                : "0";
-
-              // Get the channel icon from our state (fallback if not yet loaded)
-              const channelIconUrl =
-                channelIcons[snippet.channelId] ||
-                "https://www.youtube.com/s/desktop/placeholder.png";
-
-              return (
-                <Link
-                  to={`/watch/${vidId}`}
-                  key={`${vidId}-${index}`}
-                  className="group"
-                >
-                  <div
-                    className="relative pb-[56.25%] bg-black overflow-hidden rounded-lg"
-                    onMouseEnter={() => setHoveredVideoId(vidId)}
-                    onMouseLeave={() => setHoveredVideoId(null)}
-                  >
-                    {hoveredVideoId === vidId ? (
-                      <iframe
-                        style={{ pointerEvents: "none" }}
-                        className="absolute top-0 left-0 w-full h-full object-cover"
-                        src={`https://www.youtube.com/embed/${vidId}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&loop=1&playlist=${vidId}`}
-                        allow="autoplay"
-                        title="preview"
-                      />
-                    ) : (
-                      <img
-                        src={snippet.thumbnails.high.url}
-                        alt={snippet.title}
-                        className="absolute top-0 left-0 w-full h-full object-cover group-hover:opacity-90 transition-opacity"
-                      />
-                    )}
-                  </div>
-                  <div className="mt-2 flex">
-                    <img
-                      src={channelIconUrl}
-                      alt={snippet.channelTitle}
-                      className="w-10 h-10 rounded-full"
-                    />
-                    <div className="ml-3 flex-1">
-                      <h2 className="text-sm font-medium leading-tight line-clamp-2">
-                        {snippet.title}
-                      </h2>
-                      <p className="text-xs text-gray-400">
-                        {snippet.channelTitle}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {viewCount} views • {publishedRelative}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+          <>
+            {mode === "search" && searchQuery.trim() !== "" ? (
+              <SearchResults
+                videos={videos}
+                channelIcons={channelIcons}
+                hoveredVideoId={hoveredVideoId}
+                setHoveredVideoId={setHoveredVideoId}
+              />
+            ) : (
+              <VideoGrid
+                videos={videos}
+                channelIcons={channelIcons}
+                hoveredVideoId={hoveredVideoId}
+                setHoveredVideoId={setHoveredVideoId}
+              />
+            )}
+          </>
         )}
 
-        {/* Loading indicator at bottom when fetching more */}
         {loading && videos.length > 0 && (
           <p className="text-center mt-6">Loading more videos…</p>
         )}
