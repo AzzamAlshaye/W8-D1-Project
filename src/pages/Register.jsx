@@ -4,7 +4,6 @@ import { useNavigate, Link } from "react-router";
 import axios from "axios";
 import { FaUserPlus } from "react-icons/fa";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -66,13 +65,13 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-purple-600 via-pink-500 to-red-400 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-6">
       <ToastContainer position="top-center" />
 
-      <div className="bg-white shadow-2xl rounded-3xl max-w-md w-full p-8">
+      <div className="bg-gray-800 shadow-lg rounded-3xl max-w-md w-full p-8">
         <div className="flex flex-col items-center mb-6">
-          <FaUserPlus className="text-5xl text-purple-600 mb-2" />
-          <h2 className="text-2xl font-bold text-purple-600">Create Account</h2>
+          <FaUserPlus className="text-5xl text-white mb-2" />
+          <h2 className="text-2xl font-bold text-white">Create Account</h2>
         </div>
 
         <Formik
@@ -85,7 +84,7 @@ export default function Register() {
               <div>
                 <label
                   htmlFor="fullName"
-                  className="block text-purple-700 font-medium mb-1"
+                  className="block text-gray-300 font-medium mb-1"
                 >
                   Full Name
                 </label>
@@ -93,19 +92,20 @@ export default function Register() {
                   type="text"
                   id="fullName"
                   name="fullName"
-                  className="w-full px-4 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="w-full px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  placeholder="Your Name"
                 />
                 <ErrorMessage
                   name="fullName"
                   component="div"
-                  className="text-red-600 text-sm mt-1"
+                  className="text-red-500 text-sm mt-1"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="email"
-                  className="block text-purple-700 font-medium mb-1"
+                  className="block text-gray-300 font-medium mb-1"
                 >
                   Email Address
                 </label>
@@ -113,19 +113,20 @@ export default function Register() {
                   type="email"
                   id="email"
                   name="email"
-                  className="w-full px-4 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="w-full px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  placeholder="you@example.com"
                 />
                 <ErrorMessage
                   name="email"
                   component="div"
-                  className="text-red-600 text-sm mt-1"
+                  className="text-red-500 text-sm mt-1"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="password"
-                  className="block text-purple-700 font-medium mb-1"
+                  className="block text-gray-300 font-medium mb-1"
                 >
                   Password
                 </label>
@@ -133,19 +134,20 @@ export default function Register() {
                   type="password"
                   id="password"
                   name="password"
-                  className="w-full px-4 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="w-full px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  placeholder="********"
                 />
                 <ErrorMessage
                   name="password"
                   component="div"
-                  className="text-red-600 text-sm mt-1"
+                  className="text-red-500 text-sm mt-1"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="confirmPassword"
-                  className="block text-purple-700 font-medium mb-1"
+                  className="block text-gray-300 font-medium mb-1"
                 >
                   Confirm Password
                 </label>
@@ -153,25 +155,26 @@ export default function Register() {
                   type="password"
                   id="confirmPassword"
                   name="confirmPassword"
-                  className="w-full px-4 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="w-full px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  placeholder="Re-enter Password"
                 />
                 <ErrorMessage
                   name="confirmPassword"
                   component="div"
-                  className="text-red-600 text-sm mt-1"
+                  className="text-red-500 text-sm mt-1"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
+                className="w-full py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition disabled:opacity-50"
               >
                 {isSubmitting ? "Registering..." : "Register"}
               </button>
 
               <Link to="/">
-                <button className="w-full py-2 bg-pink-200 text-pink-700 font-semibold rounded-lg hover:bg-pink-300 transition">
+                <button className="w-full py-2 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600 transition">
                   Home
                 </button>
               </Link>
@@ -179,11 +182,11 @@ export default function Register() {
           )}
         </Formik>
 
-        <p className="mt-6 text-center text-purple-700">
+        <p className="mt-6 text-center text-gray-300">
           Already have an account?{" "}
           <Link
             to="/login"
-            className="text-purple-600 font-medium hover:underline"
+            className="text-red-500 font-medium hover:underline"
           >
             Log In
           </Link>

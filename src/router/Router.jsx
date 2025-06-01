@@ -4,8 +4,7 @@ import { createBrowserRouter, RouterProvider, Outlet } from "react-router";
 import HomePage from "../pages/HomePage";
 import LoginPage from "../pages/LoginPage";
 import Register from "../pages/Register";
-import ChatPage from "../pages/ChatPage";
-import ProtectedRoute from "../components/ProtectedRoute";
+// import ChatPage from "../pages/ChatPage";
 
 function RootLayout() {
   return (
@@ -19,18 +18,11 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <RootLayout />,
-    children: [
-      { index: true, element: <HomePage /> },
-      { path: "login", element: <LoginPage /> },
-      { path: "register", element: <Register /> },
-
-      // everything under here requires login
-      {
-        element: <ProtectedRoute />,
-        children: [{ path: "chat", element: <ChatPage /> }],
-      },
-    ],
+    children: [{ index: true, element: <HomePage /> }],
   },
+
+  { path: "login", element: <LoginPage /> },
+  { path: "register", element: <Register /> },
 ]);
 
 export default function AppRouter() {

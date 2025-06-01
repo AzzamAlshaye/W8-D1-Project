@@ -54,16 +54,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-purple-600 via-pink-500 to-red-400 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-6">
       <ToastContainer position="top-center" />
 
-      <div className="bg-white shadow-2xl rounded-3xl max-w-md w-full p-8">
+      <div className="bg-gray-800 shadow-lg rounded-3xl max-w-md w-full p-8">
         <img
           src="logo.png"
           alt="Logo"
-          className="h-30 w-full object-contain mb-6"
+          className="h-32 w-full object-contain mb-6"
         />
-        <h2 className="text-3xl font-bold text-purple-600 mb-6 text-center">
+        <h2 className="text-3xl font-bold text-white mb-6 text-center">
           Log In
         </h2>
 
@@ -77,7 +77,7 @@ export default function LoginPage() {
               <div>
                 <label
                   htmlFor="email"
-                  className="block text-purple-700 font-medium mb-1"
+                  className="block text-gray-300 font-medium mb-1"
                 >
                   Email Address
                 </label>
@@ -85,19 +85,20 @@ export default function LoginPage() {
                   type="email"
                   id="email"
                   name="email"
-                  className="w-full px-4 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="w-full px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  placeholder="you@example.com"
                 />
                 <ErrorMessage
                   name="email"
                   component="div"
-                  className="text-red-600 text-sm mt-1"
+                  className="text-red-500 text-sm mt-1"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="password"
-                  className="block text-purple-700 font-medium mb-1"
+                  className="block text-gray-300 font-medium mb-1"
                 >
                   Password
                 </label>
@@ -105,25 +106,26 @@ export default function LoginPage() {
                   type="password"
                   id="password"
                   name="password"
-                  className="w-full px-4 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="w-full px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  placeholder="********"
                 />
                 <ErrorMessage
                   name="password"
                   component="div"
-                  className="text-red-600 text-sm mt-1"
+                  className="text-red-500 text-sm mt-1"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
+                className="w-full py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition disabled:opacity-50"
               >
                 {isSubmitting ? "Logging In..." : "Log In"}
               </button>
 
               <Link to="/">
-                <button className="w-full py-2 bg-pink-200 text-pink-700 font-semibold rounded-lg hover:bg-pink-300 transition">
+                <button className="w-full py-2 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600 transition">
                   Home
                 </button>
               </Link>
@@ -131,11 +133,11 @@ export default function LoginPage() {
           )}
         </Formik>
 
-        <p className="mt-6 text-center text-purple-700">
+        <p className="mt-6 text-center text-gray-300">
           Don’t have an account?
           <Link
             to="/register"
-            className="text-purple-600 font-medium hover:underline ml-1"
+            className="text-red-500 font-medium hover:underline ml-1"
           >
             Register
           </Link>
