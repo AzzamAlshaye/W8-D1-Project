@@ -7,6 +7,13 @@ import Navbar from "../components/Navbar";
 import RelativeTime from "../utils/RelativeTime"; // Adjust import path as needed
 import formatDuration from "../utils/formatDuration"; // Adjust import path as needed
 
+// ─────── React Icons Imports ───────
+import { MdThumbUp, MdThumbDown } from "react-icons/md";
+import { BiSolidLike, BiSolidDislike } from "react-icons/bi";
+
+import { FiMoreHorizontal } from "react-icons/fi";
+import { FaShare } from "react-icons/fa";
+
 const API_KEY = "AIzaSyBBro6atDbmlP2ypqbIEIdmDTzmFEb3vFQ";
 const COMMENTS_API = "https://683c222328a0b0f2fdc64548.mockapi.io/comments";
 
@@ -442,8 +449,8 @@ export default function VideoPage() {
           <h1 className="mt-4 text-xl font-semibold">{snippet.title}</h1>
 
           {/* Channel Info + Subscriber Count */}
-          <div className="mt-2 flex justify-between items-center gap-3">
-            <div className="flex gap-3">
+          <div className="mt-2 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div className="flex gap-3 items-center">
               {VideoThumbnail ? (
                 <img
                   src={VideoThumbnail}
@@ -454,7 +461,7 @@ export default function VideoPage() {
                 <div className="w-10 h-10 bg-gray-700 rounded-full animate-pulse" />
               )}
 
-              <div>
+              <div className="flex flex-col">
                 <p className="text-sm font-medium">{snippet.channelTitle}</p>
                 <p className="text-gray-400 text-xs">
                   {channelSubs !== null
@@ -464,18 +471,36 @@ export default function VideoPage() {
               </div>
             </div>
 
-            {/* Like/Dislike (informational only) and subscribe */}
-            <div>
-              <div className="mt-4 flex items-center gap-6">
-                <button className="flex items-center gap-1 text-gray-300 hover:text-white">
-                  <span className="text-lg">👍</span>
+            {/* Like/Dislike/Share/More */}
+            <div className="mt-4 sm:mt-0 flex items-center gap-4">
+              {/* Pill Container for Like/Dislike */}
+              <div className="flex items-center bg-neutral-800 rounded-full overflow-hidden">
+                <button
+                  onClick={() => {}}
+                  className="flex items-center gap-1 px-3 py-2 text-neutral-200 hover:bg-neutral-700"
+                >
+                  <BiSolidLike size={20} />
                   <span className="text-sm">{videoLikeCount}</span>
                 </button>
-                <button className="flex items-center gap-1 text-gray-300 hover:text-white">
-                  <span className="text-lg">👎</span>
-                  <span className="text-sm">{videoDislikeCount}</span>
+                <div className="h-6 border-l border-neutral-700" />
+                <button
+                  onClick={() => {}}
+                  className="flex items-center gap-1 px-3 py-2 text-neutral-200 hover:bg-neutral-700"
+                >
+                  <BiSolidDislike size={20} />
                 </button>
               </div>
+
+              {/* Share Button */}
+              <button className="flex items-center gap-1 px-3 py-2 bg-neutral-800 rounded-full text-neutral-200 hover:bg-neutral-700">
+                <FaShare size={18} />
+                <span className="text-sm">Share</span>
+              </button>
+
+              {/* More Options Button */}
+              <button className="flex items-center px-3 py-2 bg-neutral-800 rounded-full text-neutral-200 hover:bg-neutral-700">
+                <FiMoreHorizontal size={18} />
+              </button>
             </div>
           </div>
 
@@ -494,7 +519,7 @@ export default function VideoPage() {
                 {snippet.tags.slice(0, 5).map((tag) => (
                   <span
                     key={tag}
-                    className="mr-2 text-neutral-400  cursor-pointer"
+                    className="mr-2 text-neutral-400 cursor-pointer"
                   >
                     #{tag}
                   </span>
@@ -515,7 +540,7 @@ export default function VideoPage() {
                   </div>
                   <button
                     onClick={() => setIsDescExpanded(true)}
-                    className="mt-1 text-sm text-neutral-400  cursor-pointer focus:outline-none"
+                    className="mt-1 text-sm text-neutral-400 cursor-pointer focus:outline-none"
                   >
                     ...more
                   </button>
@@ -527,7 +552,7 @@ export default function VideoPage() {
                   </div>
                   <button
                     onClick={() => setIsDescExpanded(false)}
-                    className="mt-1 text-sm text-neutral-400  cursor-pointer focus:outline-none"
+                    className="mt-1 text-sm text-neutral-400 cursor-pointer focus:outline-none"
                   >
                     Show less
                   </button>
@@ -597,7 +622,7 @@ export default function VideoPage() {
                           }`}
                           disabled={!isAuth}
                         >
-                          👍 <span>{c.likeCount}</span>
+                          <BiSolidLike size={20} /> <span>{c.likeCount}</span>
                         </button>
                         <button
                           onClick={() => handleCommentDislike(idx)}
@@ -613,7 +638,8 @@ export default function VideoPage() {
                           }`}
                           disabled={!isAuth}
                         >
-                          👎 <span>{c.dislikeCount}</span>
+                          <BiSolidDislike size={20} />
+                          <span>{c.dislikeCount}</span>
                         </button>
                       </div>
                     </div>
