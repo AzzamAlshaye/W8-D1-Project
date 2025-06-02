@@ -396,7 +396,7 @@ export default function VideoPage() {
   // ────────── Render Loading State ──────────
   if (isLoading || !videoDetails) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-900 text-white flex items-center justify-center">
         <p>Loading video…</p>
       </div>
     );
@@ -413,7 +413,7 @@ export default function VideoPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-neutral-900 text-white">
       {/* ───────── Navbar ───────── */}
       <Navbar
         mode={mode}
@@ -426,7 +426,7 @@ export default function VideoPage() {
         onHomeClick={goHome}
       />
 
-      <div className="flex flex-col lg:flex-row p-4 gap-6">
+      <div className="flex flex-col lg:flex-row p-4 gap-6 pl-10">
         {/* Left Column: Player, Info, Description, Comments */}
         <div className="w-full lg:w-3/4">
           {/* Video IFrame */}
@@ -477,57 +477,63 @@ export default function VideoPage() {
             </button>
           </div>
 
-          {/* Views • Published Date */}
-          <div className="mt-2 flex items-center gap-2 text-gray-400 text-sm">
-            <span>{`${viewCount} views`}</span>
-            <span>•</span>
-            <span>{publishedDate}</span>
-          </div>
-
-          {/* (Optional) Render up to 5 tags as hashtags */}
-          {snippet.tags && snippet.tags.length > 0 && (
-            <div className="mt-1">
-              {snippet.tags.slice(0, 5).map((tag) => (
-                <span
-                  key={tag}
-                  className="mr-2 text-blue-400 hover:underline cursor-pointer"
-                >
-                  #{tag}
-                </span>
-              ))}
+          {/* ─── Combined Container for Views, Tags & Description ─── */}
+          <div className="mt-2 bg-neutral-800 p-4 text-neutral-200 text-sm rounded-2xl">
+            {/* 1) Views • Published Date */}
+            <div className="flex items-center gap-2">
+              <span>{`${viewCount} views`}</span>
+              <span>•</span>
+              <span>{publishedDate}</span>
             </div>
-          )}
 
-          {/* ─── Collapsible Description ─── */}
-          <div className="mt-2 text-gray-300 text-sm">
-            {!isDescExpanded ? (
-              <>
-                <div className="relative max-h-12 overflow-hidden">
-                  <div className="whitespace-pre-wrap">
+            {/* 2) (Optional) Render up to 5 tags as hashtags */}
+            {snippet.tags && snippet.tags.length > 0 && (
+              <div className="mt-1">
+                {snippet.tags.slice(0, 5).map((tag) => (
+                  <span
+                    key={tag}
+                    className="mr-2 text-neutral-400  cursor-pointer"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* 3) Collapsible Description */}
+            <div className="mt-2 text-gray-300 text-sm">
+              {!isDescExpanded ? (
+                <>
+                  <div className="relative max-h-12 overflow-hidden">
+                    <div className="whitespace-pre-wrap">
+                      {snippet.description}
+                    </div>
+                    {/* Fade‐out overlay (optional) */}
+                    <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-neutral-800 via-neutral-600/0" />
+                  </div>
+                  <button
+                    onClick={() => setIsDescExpanded(true)}
+                    className="mt-1 text-sm text-neutral-400  cursor-pointer focus:outline-none"
+                  >
+                    ...more
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="whitespace-pre-wrap text-neutral-100">
                     {snippet.description}
                   </div>
-                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-gray-900 via-gray-900/0" />
-                </div>
-                <button
-                  onClick={() => setIsDescExpanded(true)}
-                  className="mt-1 text-sm text-blue-400 hover:underline focus:outline-none"
-                >
-                  ...more
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="whitespace-pre-wrap">{snippet.description}</div>
-                <button
-                  onClick={() => setIsDescExpanded(false)}
-                  className="mt-1 text-sm text-blue-400 hover:underline focus:outline-none"
-                >
-                  Show less
-                </button>
-              </>
-            )}
+                  <button
+                    onClick={() => setIsDescExpanded(false)}
+                    className="mt-1 text-sm text-neutral-400  cursor-pointer focus:outline-none"
+                  >
+                    Show less
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          {/* ───────────────────────────────── ─── */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
 
           {/* ────────── Comments Section ────────── */}
           <section className="mt-8">
