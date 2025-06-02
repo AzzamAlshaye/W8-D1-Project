@@ -14,16 +14,12 @@ export default function Navbar({
 }) {
   return (
     <header className="sticky top-0 z-10 bg-neutral-900 p-4 flex items-center space-x-4">
-      <img src="logo-w.svg" alt="youtube logo" className="h-6" />
-
-      {mode === "search" && searchTerm.trim() !== "" && (
-        <button
-          onClick={onHomeClick}
-          className="text-gray-300 hover:text-white bg-gray-700 px-3 py-1 rounded"
-        >
-          Home
-        </button>
-      )}
+      <img
+        src="logo-w.svg"
+        alt="youtube logo"
+        className="h-6"
+        onClick={onHomeClick}
+      />
 
       <form
         onSubmit={onSearchSubmit}
