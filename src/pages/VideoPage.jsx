@@ -442,36 +442,41 @@ export default function VideoPage() {
           <h1 className="mt-4 text-xl font-semibold">{snippet.title}</h1>
 
           {/* Channel Info + Subscriber Count */}
-          <div className="mt-2 flex items-center gap-3">
-            {VideoThumbnail ? (
-              <img
-                src={VideoThumbnail}
-                alt={snippet.channelTitle + " thumbnail"}
-                className="w-10 h-10 rounded-full"
-              />
-            ) : (
-              <div className="w-10 h-10 bg-gray-700 rounded-full animate-pulse" />
-            )}
-            <div>
-              <p className="text-sm font-medium">{snippet.channelTitle}</p>
-              <p className="text-gray-400 text-xs">
-                {channelSubs !== null
-                  ? `${channelSubs.toLocaleString()} subscribers`
-                  : "Loading…"}
-              </p>
-            </div>
-          </div>
+          <div className="mt-2 flex justify-between items-center gap-3">
+            <div className="flex gap-3">
+              {VideoThumbnail ? (
+                <img
+                  src={VideoThumbnail}
+                  alt={snippet.channelTitle + " thumbnail"}
+                  className="w-10 h-10 rounded-full"
+                />
+              ) : (
+                <div className="w-10 h-10 bg-gray-700 rounded-full animate-pulse" />
+              )}
 
-          {/* Like/Dislike (informational only) */}
-          <div className="mt-4 flex items-center gap-6">
-            <button className="flex items-center gap-1 text-gray-300 hover:text-white">
-              <span className="text-lg">👍</span>
-              <span className="text-sm">{videoLikeCount}</span>
-            </button>
-            <button className="flex items-center gap-1 text-gray-300 hover:text-white">
-              <span className="text-lg">👎</span>
-              <span className="text-sm">{videoDislikeCount}</span>
-            </button>
+              <div>
+                <p className="text-sm font-medium">{snippet.channelTitle}</p>
+                <p className="text-gray-400 text-xs">
+                  {channelSubs !== null
+                    ? `${channelSubs.toLocaleString()} subscribers`
+                    : "Loading…"}
+                </p>
+              </div>
+            </div>
+
+            {/* Like/Dislike (informational only) and subscribe */}
+            <div>
+              <div className="mt-4 flex items-center gap-6">
+                <button className="flex items-center gap-1 text-gray-300 hover:text-white">
+                  <span className="text-lg">👍</span>
+                  <span className="text-sm">{videoLikeCount}</span>
+                </button>
+                <button className="flex items-center gap-1 text-gray-300 hover:text-white">
+                  <span className="text-lg">👎</span>
+                  <span className="text-sm">{videoDislikeCount}</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* ─── Combined Container for Views, Tags & Description ─── */}
