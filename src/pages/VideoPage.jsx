@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router";
 import axios from "axios";
 import Navbar from "../components/Navbar";
+import RelativeTime from "../utils/RelativeTime"; // Adjust import path as needed
+import formatDuration from "../utils/formatDuration"; // Adjust import path as needed
 
 const API_KEY = "AIzaSyBBro6atDbmlP2ypqbIEIdmDTzmFEb3vFQ";
 const COMMENTS_API = "https://683c222328a0b0f2fdc64548.mockapi.io/comments";
@@ -95,19 +97,19 @@ export default function VideoPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ────────── Video / Related / Comments State ──────────
+  // ────────── Video / Popular / Comments State ──────────
   const [videoDetails, setVideoDetails] = useState(null);
   const [VideoThumbnail, setVideoThumbnail] = useState(null);
   const [channelSubs, setChannelSubs] = useState(null);
-  const [relatedVideos, setRelatedVideos] = useState([]);
+  const [popularVideos, setPopularVideos] = useState([]);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
 
   const [loadingVideo, setLoadingVideo] = useState(true);
-  const [loadingRelated, setLoadingRelated] = useState(true);
+  const [loadingPopular, setLoadingPopular] = useState(true);
   const [loadingComments, setLoadingComments] = useState(true);
 
-  const isLoading = loadingVideo || loadingRelated || loadingComments;
+  const isLoading = loadingVideo || loadingPopular || loadingComments;
   const isAuth = localStorage.getItem("isAuthenticated") === "true";
   const currentUserId = localStorage.getItem("userId");
 
@@ -119,12 +121,12 @@ export default function VideoPage() {
     setVideoDetails(null);
     setVideoThumbnail(null);
     setChannelSubs(null);
-    setRelatedVideos([]);
+    setPopularVideos([]);
     setComments([]);
     setNewComment("");
     setIsDescExpanded(false);
     setLoadingVideo(true);
-    setLoadingRelated(true);
+    setLoadingPopular(true);
     setLoadingComments(true);
 
     // 1) Fetch main video details
@@ -174,40 +176,34 @@ export default function VideoPage() {
       }
     })();
 
-    // 2) Fetch related videos
+    // 2) Fetch most popular videos (with contentDetails for duration)
     (async () => {
       try {
         const resp = await fetch(
-          `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&maxResults=10&key=${API_KEY}`
+          `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&chart=mostPopular&maxResults=10&regionCode=SA&key=${API_KEY}`
         );
         if (!resp.ok) {
-          console.warn("YouTube related fetch failed:", resp.status);
-          setRelatedVideos([]);
+          console.warn("YouTube popular fetch failed:", resp.status);
+          setPopularVideos([]);
         } else {
           const data = await resp.json();
           if (data.items && data.items.length > 0) {
-            const mapped = data.items
-              .map((item) => {
-                const vid = item.id.videoId;
-                return vid
-                  ? {
-                      id: vid,
-                      snippet: item.snippet,
-                    }
-                  : null;
-              })
-              .filter(Boolean);
-            setRelatedVideos(mapped);
+            const mapped = data.items.map((item) => ({
+              id: item.id,
+              snippet: item.snippet,
+              duration: item.contentDetails.duration,
+            }));
+            setPopularVideos(mapped);
           } else {
-            console.warn("No related videos found for videoId =", videoId);
-            setRelatedVideos([]);
+            console.warn("No popular videos found.");
+            setPopularVideos([]);
           }
         }
       } catch (err) {
-        console.error("Error fetching related videos:", err);
-        setRelatedVideos([]);
+        console.error("Error fetching popular videos:", err);
+        setPopularVideos([]);
       } finally {
-        setLoadingRelated(false);
+        setLoadingPopular(false);
       }
     })();
 
@@ -413,7 +409,7 @@ export default function VideoPage() {
   );
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-white">
+    <div className="min-h-screen bg-neutral-900 text-white flex flex-col">
       {/* ───────── Navbar ───────── */}
       <Navbar
         mode={mode}
@@ -426,9 +422,10 @@ export default function VideoPage() {
         onHomeClick={goHome}
       />
 
-      <div className="flex flex-col lg:flex-row p-4 gap-6 pl-10">
+      {/* ───────── Main Content ───────── */}
+      <div className="flex flex-col lg:flex-row p-4 lg:pl-10 gap-6">
         {/* Left Column: Player, Info, Description, Comments */}
-        <div className="w-full lg:w-3/4">
+        <div className="w-full lg:w-3/4 flex flex-col">
           {/* Video IFrame */}
           <div className="w-full bg-black h-64 md:h-96 lg:h-[600px]">
             <iframe
@@ -508,7 +505,7 @@ export default function VideoPage() {
                     <div className="whitespace-pre-wrap">
                       {snippet.description}
                     </div>
-                    {/* Fade‐out overlay (optional) */}
+                    {/* Fade‐out overlay */}
                     <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-neutral-800 via-neutral-600/0" />
                   </div>
                   <button
@@ -536,7 +533,7 @@ export default function VideoPage() {
           {/* ─────────────────────────────────────────────────────────────────── */}
 
           {/* ────────── Comments Section ────────── */}
-          <section className="mt-8">
+          <section className="mt-8 flex-1 flex flex-col">
             <h2 className="text-lg font-medium">Comments</h2>
 
             {isAuth ? (
@@ -562,7 +559,7 @@ export default function VideoPage() {
               </p>
             )}
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 space-y-4 overflow-auto">
               {comments.length === 0 ? (
                 <p className="text-gray-500">No comments yet.</p>
               ) : (
@@ -622,39 +619,56 @@ export default function VideoPage() {
           </section>
         </div>
 
-        {/* Right Column: Related Videos */}
-        <aside className="w-full lg:w-1/4 space-y-4">
-          <h2 className="text-lg font-medium">Related Videos</h2>
-          <div className="space-y-3 max-h-[80vh] overflow-y-auto pr-2">
-            {relatedVideos.length === 0 ? (
-              <p className="text-gray-500">No related videos found.</p>
+        {/* Right Column: Popular Videos (stacks under on small screens) */}
+        <aside className="w-full lg:w-1/4 flex flex-col">
+          <h2 className="text-lg font-medium mb-2">Popular Videos</h2>
+          <div className="flex-1 flex flex-col space-y-3">
+            {popularVideos.length === 0 ? (
+              <p className="text-gray-500">No popular videos found.</p>
             ) : (
-              relatedVideos.map((vid) => {
+              popularVideos.map((vid) => {
                 const thumb =
                   (vid.snippet.thumbnails.medium &&
                     vid.snippet.thumbnails.medium.url) ||
                   vid.snippet.thumbnails.default.url;
+                const publishedAt = vid.snippet.publishedAt;
+                const relative = RelativeTime(publishedAt); // e.g. "3 days ago"
+                const durationFormatted = formatDuration(vid.duration); // e.g. "12:34"
 
                 return (
                   <Link
                     to={`/watch/${vid.id}`}
                     key={vid.id}
-                    className="flex items-center gap-3 hover:bg-gray-800 p-2 rounded-md"
+                    className="flex items-start gap-3 hover:bg-gray-800 p-2 rounded-md"
                   >
-                    <div className="w-32 flex-shrink-0">
+                    <div className="w-32 flex-shrink-0 relative">
                       <img
                         src={thumb}
                         alt={vid.snippet.title}
                         className="w-full h-auto rounded-md"
                       />
+                      <div className="absolute bottom-1 right-1 bg-black bg-opacity-75 text-xs text-white px-1 rounded">
+                        {durationFormatted}
+                      </div>
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 flex flex-col">
                       <h3 className="text-sm font-medium line-clamp-2">
                         {vid.snippet.title}
                       </h3>
                       <p className="text-xs text-gray-400">
                         {vid.snippet.channelTitle}
                       </p>
+                      <div className="text-xs text-gray-500">
+                        <span>{relative}</span>
+                        <span className="mx-1">•</span>
+                        <span>
+                          {new Date(publishedAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                      </div>
                     </div>
                   </Link>
                 );

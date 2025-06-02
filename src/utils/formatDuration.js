@@ -1,5 +1,5 @@
 // src/utils/formatDuration.js
-export function formatDuration(isoDuration) {
+export default function formatDuration(isoDuration) {
   // Matches e.g. "PT1H2M30S", "PT5M4S", "PT45S"
   const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!match) return "0:00";

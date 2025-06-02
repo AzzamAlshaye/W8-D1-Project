@@ -1,5 +1,5 @@
 // src/utils/RelativeTime.js
-export function getRelativeTime(isoString) {
+export default function getRelativeTime(isoString) {
   const published = new Date(isoString).getTime();
   const now = Date.now();
   const diffSeconds = Math.floor((now - published) / 1000);
