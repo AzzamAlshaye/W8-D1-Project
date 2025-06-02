@@ -42,36 +42,27 @@ export default function SearchResults({
         {displayVideos.map((video) => {
           const vidId = video.id;
           const { snippet, statistics, contentDetails } = video;
-
-          // Use your RelativeTime utility:
           const publishedRelative = getRelativeTime(snippet.publishedAt);
-
           const viewCount = statistics?.viewCount
             ? Number(statistics.viewCount).toLocaleString()
             : "0";
-
-          // Format the ISO 8601 duration:
           const durationISO = contentDetails?.duration || "";
           const formattedDuration = formatDuration(durationISO);
-
           const channelIconUrl =
             channelIcons[snippet.channelId] ||
             "https://www.youtube.com/s/desktop/placeholder.png";
 
           return (
-            <div
-              key={vidId}
-              className="flex flex-col justify-center break-all items-center"
-            >
+            <div key={vidId} className="flex flex-col break-all items-center">
               <Link
                 to={`/watch/${vidId}`}
                 className="
-                  flex
+                  flex flex-col sm:flex-row
                   gap-2 sm:gap-4
                   items-start
                   w-full sm:w-3/4
                   hover:bg-gray-800
-                  p-2 sm:p-8
+                  p-2 sm:p-4 lg:p-8
                   rounded-md
                   transition
                 "
@@ -80,8 +71,8 @@ export default function SearchResults({
                 <div
                   className="
                     relative
-                    w-32 sm:w-80
-                    h-20 sm:h-48
+                    w-full sm:w-32
+                    h-48 sm:h-20
                     bg-black
                     rounded-lg
                     overflow-hidden
@@ -109,11 +100,14 @@ export default function SearchResults({
                       {formattedDuration && (
                         <span
                           className="
-                          absolute bottom-1 right-1
+                          absolute
+                          bottom-1
+                          right-1
                           bg-black bg-opacity-75
                           text-white text-xs
-                          px-1 rounded
-                        "
+                          px-1
+                          rounded
+                          "
                         >
                           {formattedDuration}
                         </span>
@@ -123,34 +117,29 @@ export default function SearchResults({
                 </div>
 
                 {/* Video info */}
-                <div className="flex-1 flex gap-2">
-                  <img
-                    src={channelIconUrl}
-                    alt={snippet.channelTitle}
-                    className="w-5 h-5 lg:w-10 lg:h-10 rounded-full flex-shrink-0"
-                  />
-                  <div className="flex-1">
-                    <h2
-                      className="
-                      text-sm lg:text-base
-                       font-medium leading-tight
-                       text-white
-                    "
-                    >
+                <div className="flex flex-col sm:flex-1 gap-1 mt-2 sm:mt-0">
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={channelIconUrl}
+                      alt={snippet.channelTitle}
+                      className="w-6 h-6 lg:w-10 lg:h-10 rounded-full flex-shrink-0"
+                    />
+                    <h2 className="text-sm lg:text-base font-medium text-white leading-tight">
                       {snippet.title}
                     </h2>
-                    <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
-                      {snippet.channelTitle}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
-                      {viewCount} views • {publishedRelative}
-                    </p>
-
-                    {/* ─── Simple Video Description ─── */}
-                    <p className="text-[10px] sm:text-xs text-gray-400 mt-1 line-clamp-1 w-1/2 lg:line-clamp-2 lg:w-full  ">
-                      {snippet.description}
-                    </p>
                   </div>
+
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
+                    {snippet.channelTitle}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
+                    {viewCount} views • {publishedRelative}
+                  </p>
+
+                  {/* ─── Simple Video Description ─── */}
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1 line-clamp-2">
+                    {snippet.description}
+                  </p>
                 </div>
               </Link>
             </div>
