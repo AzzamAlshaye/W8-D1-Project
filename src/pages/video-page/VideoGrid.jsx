@@ -20,7 +20,7 @@ export default function VideoGrid({
   setHoveredVideoId,
 }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 px-10">
       {videos.map((video) => {
         const vidId = video.id; // e.g. "dQw4w9WgXcQ"
         const { snippet, statistics, contentDetails } = video;
