@@ -111,6 +111,9 @@ export default function VideoPage() {
   const isAuth = localStorage.getItem("isAuthenticated") === "true";
   const currentUserId = localStorage.getItem("userId");
 
+  // New state for collapsible description
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
+
   useEffect(() => {
     // Reset state on videoId change
     setVideoDetails(null);
@@ -119,6 +122,7 @@ export default function VideoPage() {
     setRelatedVideos([]);
     setComments([]);
     setNewComment("");
+    setIsDescExpanded(false);
     setLoadingVideo(true);
     setLoadingRelated(true);
     setLoadingComments(true);
@@ -389,7 +393,7 @@ export default function VideoPage() {
     }
   };
 
-  // While loading or videoDetails is missing, show full‐screen loader
+  // ────────── Render Loading State ──────────
   if (isLoading || !videoDetails) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
@@ -398,9 +402,15 @@ export default function VideoPage() {
     );
   }
 
+  // ────────── Extract Snippet & Statistics ──────────
   const { snippet, statistics } = videoDetails;
   const videoLikeCount = statistics.likeCount || "0";
   const videoDislikeCount = statistics.dislikeCount || "0";
+  const viewCount = Number(statistics.viewCount || 0).toLocaleString();
+  const publishedDate = new Date(snippet.publishedAt).toLocaleDateString(
+    "en-US",
+    { year: "numeric", month: "short", day: "numeric" }
+  );
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -417,7 +427,7 @@ export default function VideoPage() {
       />
 
       <div className="flex flex-col lg:flex-row p-4 gap-6">
-        {/* Left Column: Player, Info, Comments */}
+        {/* Left Column: Player, Info, Description, Comments */}
         <div className="w-full lg:w-3/4">
           {/* Video IFrame */}
           <div className="w-full bg-black h-64 md:h-96 lg:h-[600px]">
@@ -467,7 +477,59 @@ export default function VideoPage() {
             </button>
           </div>
 
-          {/* Comments Section */}
+          {/* Views • Published Date */}
+          <div className="mt-2 flex items-center gap-2 text-gray-400 text-sm">
+            <span>{`${viewCount} views`}</span>
+            <span>•</span>
+            <span>{publishedDate}</span>
+          </div>
+
+          {/* (Optional) Render up to 5 tags as hashtags */}
+          {snippet.tags && snippet.tags.length > 0 && (
+            <div className="mt-1">
+              {snippet.tags.slice(0, 5).map((tag) => (
+                <span
+                  key={tag}
+                  className="mr-2 text-blue-400 hover:underline cursor-pointer"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* ─── Collapsible Description ─── */}
+          <div className="mt-2 text-gray-300 text-sm">
+            {!isDescExpanded ? (
+              <>
+                <div className="relative max-h-12 overflow-hidden">
+                  <div className="whitespace-pre-wrap">
+                    {snippet.description}
+                  </div>
+                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-gray-900 via-gray-900/0" />
+                </div>
+                <button
+                  onClick={() => setIsDescExpanded(true)}
+                  className="mt-1 text-sm text-blue-400 hover:underline focus:outline-none"
+                >
+                  ...more
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="whitespace-pre-wrap">{snippet.description}</div>
+                <button
+                  onClick={() => setIsDescExpanded(false)}
+                  className="mt-1 text-sm text-blue-400 hover:underline focus:outline-none"
+                >
+                  Show less
+                </button>
+              </>
+            )}
+          </div>
+          {/* ───────────────────────────────── ─── */}
+
+          {/* ────────── Comments Section ────────── */}
           <section className="mt-8">
             <h2 className="text-lg font-medium">Comments</h2>
 
