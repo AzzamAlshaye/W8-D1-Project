@@ -97,7 +97,8 @@ export default function VideoPage() {
 
   // ────────── Video / Related / Comments State ──────────
   const [videoDetails, setVideoDetails] = useState(null);
-  const [channelImage, setChannelImage] = useState(null);
+  const [VideoThumbnail, setVideoThumbnail] = useState(null);
+  const [channelSubs, setChannelSubs] = useState(null);
   const [relatedVideos, setRelatedVideos] = useState([]);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
@@ -113,7 +114,8 @@ export default function VideoPage() {
   useEffect(() => {
     // Reset state on videoId change
     setVideoDetails(null);
-    setChannelImage(null);
+    setVideoThumbnail(null);
+    setChannelSubs(null);
     setRelatedVideos([]);
     setComments([]);
     setNewComment("");
@@ -137,24 +139,25 @@ export default function VideoPage() {
           const video = data.items[0];
           setVideoDetails(video);
 
-          // Fetch channel thumbnail
+          // Fetch channel thumbnail AND subscriber count
           const channelId = video.snippet.channelId;
           const chResp = await fetch(
-            `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${API_KEY}`
+            `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}&key=${API_KEY}`
           );
           if (!chResp.ok) {
             console.warn("YouTube channel fetch failed:", chResp.status);
           } else {
             const chData = await chResp.json();
-            if (
-              chData.items &&
-              chData.items.length > 0 &&
-              chData.items[0].snippet.thumbnails
-            ) {
+            if (chData.items && chData.items.length > 0) {
+              // 1) thumbnail
               const thumbs = chData.items[0].snippet.thumbnails;
               const url =
                 (thumbs.medium && thumbs.medium.url) || thumbs.default.url;
-              setChannelImage(url);
+              setVideoThumbnail(url);
+
+              // 2) subscriber count
+              const subs = chData.items[0].statistics.subscriberCount;
+              setChannelSubs(Number(subs));
             }
           }
         } else {
@@ -417,7 +420,7 @@ export default function VideoPage() {
         {/* Left Column: Player, Info, Comments */}
         <div className="w-full lg:w-3/4">
           {/* Video IFrame */}
-          <div className="w-full aspect-w-16 aspect-h-9 bg-black">
+          <div className="w-full bg-black h-64 md:h-96 lg:h-[600px]">
             <iframe
               className="w-full h-full"
               src={`https://www.youtube.com/embed/${videoId}`}
@@ -431,11 +434,11 @@ export default function VideoPage() {
           {/* Title */}
           <h1 className="mt-4 text-xl font-semibold">{snippet.title}</h1>
 
-          {/* Channel Info + Publish Date */}
+          {/* Channel Info + Subscriber Count */}
           <div className="mt-2 flex items-center gap-3">
-            {channelImage ? (
+            {VideoThumbnail ? (
               <img
-                src={channelImage}
+                src={VideoThumbnail}
                 alt={snippet.channelTitle + " thumbnail"}
                 className="w-10 h-10 rounded-full"
               />
@@ -445,7 +448,9 @@ export default function VideoPage() {
             <div>
               <p className="text-sm font-medium">{snippet.channelTitle}</p>
               <p className="text-gray-400 text-xs">
-                {new Date(snippet.publishedAt).toLocaleDateString()}
+                {channelSubs !== null
+                  ? `${channelSubs.toLocaleString()} subscribers`
+                  : "Loading…"}
               </p>
             </div>
           </div>

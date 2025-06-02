@@ -3,37 +3,9 @@
 import React from "react";
 import { Link } from "react-router";
 
-// Move getRelativeTime out so it isn’t recreated on every render
-const getRelativeTime = (isoString) => {
-  const published = new Date(isoString).getTime();
-  const now = Date.now();
-  const diffSeconds = Math.floor((now - published) / 1000);
-  if (diffSeconds < 60) {
-    return `${diffSeconds} second${diffSeconds !== 1 ? "s" : ""} ago`;
-  }
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes !== 1 ? "s" : ""} ago`;
-  }
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) {
-    return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
-  }
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) {
-    return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
-  }
-  const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 4) {
-    return `${diffWeeks} week${diffWeeks !== 1 ? "s" : ""} ago`;
-  }
-  const diffMonths = Math.floor(diffDays / 30);
-  if (diffMonths < 12) {
-    return `${diffMonths} month${diffMonths !== 1 ? "s" : ""} ago`;
-  }
-  const diffYears = Math.floor(diffDays / 365);
-  return `${diffYears} year${diffYears !== 1 ? "s" : ""} ago`;
-};
+// Import your utilities
+import { getRelativeTime } from "../../utils/RelativeTime";
+import { formatDuration } from "../../utils/formatDuration";
 
 /**
  * Props:
@@ -43,7 +15,6 @@ const getRelativeTime = (isoString) => {
  *  - loading: boolean indicating fetch in progress; defaults to false
  *
  * This component simply displays up to 50 videos from the passed‐in array.
- * It does not fetch or load more on scroll—API is called once by the parent.
  */
 export default function SearchResults({
   videos = [],
@@ -69,11 +40,18 @@ export default function SearchResults({
     <div className="space-y-6">
       {displayVideos.map((video) => {
         const vidId = video.id;
-        const { snippet, statistics } = video;
+        const { snippet, statistics, contentDetails } = video;
+
+        // Use your RelativeTime utility:
         const publishedRelative = getRelativeTime(snippet.publishedAt);
+
         const viewCount = statistics?.viewCount
           ? Number(statistics.viewCount).toLocaleString()
           : "0";
+
+        // Format the ISO 8601 duration:
+        const durationISO = contentDetails?.duration || "";
+        const formattedDuration = formatDuration(durationISO);
 
         const channelIconUrl =
           channelIcons[snippet.channelId] ||
@@ -100,15 +78,23 @@ export default function SearchResults({
                   title="preview"
                 />
               ) : (
-                <img
-                  src={snippet.thumbnails.medium.url}
-                  alt={snippet.title}
-                  className="absolute top-0 left-0 w-full h-full object-cover"
-                />
+                <>
+                  <img
+                    src={snippet.thumbnails.medium.url}
+                    alt={snippet.title}
+                    className="absolute top-0 left-0 w-full h-full object-cover"
+                  />
+                  {/* Duration badge */}
+                  {formattedDuration && (
+                    <span className="absolute bottom-1 right-1 bg-black bg-opacity-75 text-white text-xs px-1 rounded">
+                      {formattedDuration}
+                    </span>
+                  )}
+                </>
               )}
             </div>
 
-            {/* Info */}
+            {/* Video info */}
             <div className="flex-1 flex gap-3">
               <img
                 src={channelIconUrl}

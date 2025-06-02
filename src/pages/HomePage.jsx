@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router";
-import Navbar from "../components/Navbar"; // ← import the new Navbar
+import Navbar from "../components/Navbar";
 import VideoGrid from "./video-page/VideoGrid";
 import SearchResults from "./video-page/SearchResults";
 
@@ -34,38 +34,6 @@ export default function HomePage() {
   // 3) In-memory cache for video details per ID
   const videoDetailsCache = useRef({}); // { videoId: videoObject, … }
 
-  // Helper to compute relative time (“X hours ago”)
-  const getRelativeTime = (isoString) => {
-    const published = new Date(isoString).getTime();
-    const now = Date.now();
-    const diffSeconds = Math.floor((now - published) / 1000);
-    if (diffSeconds < 60) {
-      return `${diffSeconds} second${diffSeconds !== 1 ? "s" : ""} ago`;
-    }
-    const diffMinutes = Math.floor(diffSeconds / 60);
-    if (diffMinutes < 60) {
-      return `${diffMinutes} minute${diffMinutes !== 1 ? "s" : ""} ago`;
-    }
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) {
-      return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
-    }
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) {
-      return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
-    }
-    const diffWeeks = Math.floor(diffDays / 7);
-    if (diffWeeks < 4) {
-      return `${diffWeeks} week${diffWeeks !== 1 ? "s" : ""} ago`;
-    }
-    const diffMonths = Math.floor(diffDays / 30);
-    if (diffMonths < 12) {
-      return `${diffMonths} month${diffMonths !== 1 ? "s" : ""} ago`;
-    }
-    const diffYears = Math.floor(diffDays / 365);
-    return `${diffYears} year${diffYears !== 1 ? "s" : ""} ago`;
-  };
-
   // 4) Fetch videos (most popular or search) + fetch channel icons
   const fetchVideos = useCallback(
     async (isLoadMore = false) => {
@@ -78,7 +46,7 @@ export default function HomePage() {
         if (mode === "popular") {
           // ──────────────── Most Popular ────────────────
           const url = new URL("https://www.googleapis.com/youtube/v3/videos");
-          url.searchParams.set("part", "snippet,statistics");
+          url.searchParams.set("part", "snippet,statistics,contentDetails");
           url.searchParams.set("chart", "mostPopular");
           url.searchParams.set("maxResults", "50");
           url.searchParams.set("regionCode", "SA");
@@ -132,7 +100,10 @@ export default function HomePage() {
             const detailsUrl = new URL(
               "https://www.googleapis.com/youtube/v3/videos"
             );
-            detailsUrl.searchParams.set("part", "snippet,statistics");
+            detailsUrl.searchParams.set(
+              "part",
+              "snippet,statistics,contentDetails"
+            );
             detailsUrl.searchParams.set("id", idsToFetch.join(","));
             detailsUrl.searchParams.set("key", API_KEY);
 
@@ -321,7 +292,6 @@ export default function HomePage() {
     setSuggestions([]);
   };
 
-  // HomePage.jsx
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* ─── Navbar #1 ─── */}
