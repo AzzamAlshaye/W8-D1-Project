@@ -293,7 +293,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-neutral-900 text-white">
       {/* ─── Navbar #1 ─── */}
       <Navbar
         mode={mode}
