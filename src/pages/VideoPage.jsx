@@ -528,7 +528,7 @@ export default function VideoPage() {
             )}
 
             {/* 3) Collapsible Description */}
-            <div className="mt-2 text-gray-300 text-sm">
+            <div className="mt-2 text-gray-300 text-sm break-all">
               {!isDescExpanded ? (
                 <>
                   <div className="relative max-h-12 overflow-hidden">
