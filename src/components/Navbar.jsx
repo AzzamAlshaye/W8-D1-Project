@@ -118,11 +118,7 @@ export default function Navbar({
                 onClick={(e) => e.preventDefault()}
                 className="flex items-center space-x-1 hover:opacity-80 transition"
               >
-                <img
-                  src="/subscriptions.svg"
-                  alt="Subscriptions"
-                  className="h-6 w-6"
-                />
+                <img src="/subs.svg" alt="Subscriptions" className="h-6 w-6" />
                 <span className="text-sm">Subscriptions</span>
               </button>
 
@@ -338,7 +334,7 @@ export default function Navbar({
                 >
                   Subscriptions
                   <img
-                    src="/subscriptions.svg"
+                    src="/subs.svg"
                     alt="subscriptions logo"
                     className="h-5"
                   />
