@@ -20,6 +20,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: "/watch/:videoId", element: <VideoPage /> },
+      // { path: "/liked", element: <LikedVideos /> },
     ],
   },
 

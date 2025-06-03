@@ -8,14 +8,14 @@ import RelativeTime from "../utils/RelativeTime"; // Adjust import path as neede
 import formatDuration from "../utils/formatDuration"; // Adjust import path as needed
 
 // ─────── React Icons Imports ───────
-import { MdThumbUp, MdThumbDown } from "react-icons/md";
 import { BiSolidLike, BiSolidDislike } from "react-icons/bi";
-
 import { FiMoreHorizontal } from "react-icons/fi";
 import { FaShare } from "react-icons/fa";
 
 const API_KEY = "AIzaSyBBro6atDbmlP2ypqbIEIdmDTzmFEb3vFQ";
 const COMMENTS_API = "https://683c222328a0b0f2fdc64548.mockapi.io/comments";
+const LIKED_VIDEOS_API =
+  "https://683e928b1cd60dca33dc32c0.mockapi.io/likedVideos";
 
 export default function VideoPage() {
   const { videoId } = useParams();
@@ -104,19 +104,26 @@ export default function VideoPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ────────── Video / Popular / Comments State ──────────
+  // ────────── Video / Popular / Comments / Likes State ──────────
   const [videoDetails, setVideoDetails] = useState(null);
   const [VideoThumbnail, setVideoThumbnail] = useState(null);
   const [channelSubs, setChannelSubs] = useState(null);
   const [popularVideos, setPopularVideos] = useState([]);
+
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
+
+  const [videoLikeCount, setVideoLikeCount] = useState(0);
+  const [videoDislikeCount, setVideoDislikeCount] = useState(0);
+  const [isVideoLiked, setIsVideoLiked] = useState(false);
+  const [loadingLikedState, setLoadingLikedState] = useState(true);
 
   const [loadingVideo, setLoadingVideo] = useState(true);
   const [loadingPopular, setLoadingPopular] = useState(true);
   const [loadingComments, setLoadingComments] = useState(true);
 
-  const isLoading = loadingVideo || loadingPopular || loadingComments;
+  const isLoading =
+    loadingVideo || loadingPopular || loadingComments || loadingLikedState;
   const isAuth = localStorage.getItem("isAuthenticated") === "true";
   const currentUserId = localStorage.getItem("userId");
 
@@ -132,9 +139,14 @@ export default function VideoPage() {
     setComments([]);
     setNewComment("");
     setIsDescExpanded(false);
+    setVideoLikeCount(0);
+    setVideoDislikeCount(0);
+    setIsVideoLiked(false);
+
     setLoadingVideo(true);
     setLoadingPopular(true);
     setLoadingComments(true);
+    setLoadingLikedState(true);
 
     // 1) Fetch main video details
     (async () => {
@@ -151,6 +163,10 @@ export default function VideoPage() {
         if (data.items && data.items.length > 0) {
           const video = data.items[0];
           setVideoDetails(video);
+
+          // Store official like/dislike counts
+          setVideoLikeCount(Number(video.statistics.likeCount || 0));
+          setVideoDislikeCount(Number(video.statistics.dislikeCount || 0));
 
           // Fetch channel thumbnail AND subscriber count
           const channelId = video.snippet.channelId;
@@ -239,7 +255,32 @@ export default function VideoPage() {
       .finally(() => {
         setLoadingComments(false);
       });
-  }, [videoId]);
+
+    // 4) Fetch “LikedVideos” state from mock API to see if current user already liked this video
+    if (isAuth) {
+      axios
+        .get(LIKED_VIDEOS_API, {
+          params: { userId: currentUserId, videoId },
+        })
+        .then((resp) => {
+          if (Array.isArray(resp.data) && resp.data.length > 0) {
+            setIsVideoLiked(true);
+          } else {
+            setIsVideoLiked(false);
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching liked‐video state:", err);
+          setIsVideoLiked(false);
+        })
+        .finally(() => {
+          setLoadingLikedState(false);
+        });
+    } else {
+      setIsVideoLiked(false);
+      setLoadingLikedState(false);
+    }
+  }, [videoId, isAuth, currentUserId]);
 
   // ────────── Comment Handlers ──────────
   const handleAddComment = async (e) => {
@@ -312,7 +353,7 @@ export default function VideoPage() {
     }
 
     try {
-      const { data: updated } = await axios.patch(
+      const { data: updated } = await axios.put(
         `${COMMENTS_API}/${comment.id}`,
         {
           likeCount: newLikeCount,
@@ -369,7 +410,7 @@ export default function VideoPage() {
     }
 
     try {
-      const { data: updated } = await axios.patch(
+      const { data: updated } = await axios.put(
         `${COMMENTS_API}/${comment.id}`,
         {
           likeCount: newLikeCount,
@@ -396,6 +437,41 @@ export default function VideoPage() {
     }
   };
 
+  // ────────── Video Like/Unlike Handler ──────────
+  const handleVideoLikeToggle = async () => {
+    if (!isAuth) {
+      console.warn("User not authenticated. Cannot like video.");
+      return;
+    }
+
+    if (isVideoLiked) {
+      // If already liked, find that entry in /likedVideos and DELETE it
+      try {
+        const resp = await axios.get(LIKED_VIDEOS_API, {
+          params: { userId: currentUserId, videoId },
+        });
+        if (Array.isArray(resp.data) && resp.data.length > 0) {
+          const entryId = resp.data[0].id;
+          await axios.delete(`${LIKED_VIDEOS_API}/${entryId}`);
+          setIsVideoLiked(false);
+          setVideoLikeCount((prev) => Math.max(prev - 1, 0));
+        }
+      } catch (err) {
+        console.error("Error unliking video:", err);
+      }
+    } else {
+      // Otherwise, POST a new { userId, videoId } to /likedVideos
+      const payload = { userId: currentUserId, videoId };
+      try {
+        await axios.post(LIKED_VIDEOS_API, payload);
+        setIsVideoLiked(true);
+        setVideoLikeCount((prev) => prev + 1);
+      } catch (err) {
+        console.error("Error liking video:", err);
+      }
+    }
+  };
+
   // ────────── Render Loading State ──────────
   if (isLoading || !videoDetails) {
     return (
@@ -407,8 +483,6 @@ export default function VideoPage() {
 
   // ────────── Extract Snippet & Statistics ──────────
   const { snippet, statistics } = videoDetails;
-  const videoLikeCount = statistics.likeCount || "0";
-  const videoDislikeCount = statistics.dislikeCount || "0";
   const viewCount = Number(statistics.viewCount || 0).toLocaleString();
   const publishedDate = new Date(snippet.publishedAt).toLocaleDateString(
     "en-US",
@@ -476,8 +550,15 @@ export default function VideoPage() {
               {/* Pill Container for Like/Dislike */}
               <div className="flex items-center bg-neutral-800 rounded-full overflow-hidden">
                 <button
-                  onClick={() => {}}
-                  className="flex items-center gap-1 px-3 py-2 text-neutral-200 hover:bg-neutral-700"
+                  onClick={handleVideoLikeToggle}
+                  className={`flex items-center gap-1 px-3 py-2 ${
+                    !isAuth
+                      ? "text-gray-700 cursor-not-allowed"
+                      : isVideoLiked
+                      ? "text-blue-400"
+                      : "text-neutral-200 hover:bg-neutral-700"
+                  }`}
+                  disabled={!isAuth}
                 >
                   <BiSolidLike size={20} />
                   <span className="text-sm">{videoLikeCount}</span>
@@ -488,6 +569,7 @@ export default function VideoPage() {
                   className="flex items-center gap-1 px-3 py-2 text-neutral-200 hover:bg-neutral-700"
                 >
                   <BiSolidDislike size={20} />
+                  <span className="text-sm">{videoDislikeCount}</span>
                 </button>
               </div>
 
@@ -611,6 +693,7 @@ export default function VideoPage() {
                       <p className="text-gray-300 mt-1">{c.text}</p>
                       <div className="flex items-center gap-4 mt-2">
                         <button
+                          type="button"
                           onClick={() => handleCommentLike(idx)}
                           aria-label={hasLiked ? "Remove like" : "Like comment"}
                           className={`flex items-center gap-1 text-sm ${
@@ -625,6 +708,7 @@ export default function VideoPage() {
                           <BiSolidLike size={20} /> <span>{c.likeCount}</span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleCommentDislike(idx)}
                           aria-label={
                             hasDisliked ? "Remove dislike" : "Dislike comment"
