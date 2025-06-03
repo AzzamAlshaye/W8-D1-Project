@@ -50,12 +50,12 @@ export default function Register() {
 
     try {
       await axios.post(
-        "https://683878942c55e01d184d6bf0.mockapi.io/auth",
+        "https://683c222328a0b0f2fdc64548.mockapi.io/auth",
         userPayload
       );
       toast.success("Sign-up successful! Redirecting to login…");
       resetForm();
-      setTimeout(() => navigate("/login"), 3000);
+      setTimeout(() => navigate("/login"), 1000);
     } catch (error) {
       console.error(error);
       toast.error("Registration failed. Please try again.");

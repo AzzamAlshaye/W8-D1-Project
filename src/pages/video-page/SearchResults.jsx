@@ -71,8 +71,8 @@ export default function SearchResults({
                 <div
                   className="
                     relative
-                    w-full sm:w-32
-                    h-48 sm:h-20
+                    w-full sm:w-90
+                    h-56 sm:h-50
                     bg-black
                     rounded-lg
                     overflow-hidden

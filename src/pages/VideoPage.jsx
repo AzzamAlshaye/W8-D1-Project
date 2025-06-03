@@ -573,7 +573,7 @@ export default function VideoPage() {
                   onChange={(e) => setNewComment(e.target.value)}
                   rows={3}
                   placeholder="Add a public comment..."
-                  className="w-full bg-gray-800 text-white placeholder-gray-500 border border-gray-700 rounded-md p-2 focus:outline-none focus:border-gray-500"
+                  className="w-full bg-neutral-800 text-white placeholder-gray-500 border border-neutral-950 rounded-md p-2 focus:outline-none focus:border-gray-500"
                 ></textarea>
                 <button
                   type="submit"

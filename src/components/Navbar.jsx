@@ -84,7 +84,7 @@ export default function Navbar({
         </button>
 
         <img
-          src="logo-w.svg"
+          src="/logo-w.svg"
           alt="YouTube logo"
           className="h-6 cursor-pointer"
           onClick={onHomeClick}
