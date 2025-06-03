@@ -6,19 +6,11 @@ import { FaUserCircle } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-export default function Navbar({
-  mode,
-  searchTerm,
-  setSearchTerm,
-  suggestions = [],
-  suggestionsRef = null,
-  onSuggestionClick,
-  onSearchSubmit,
-  onHomeClick,
-}) {
+export default function Temp() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // --- Auth state & user info ---
   const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
   const fullName = localStorage.getItem("fullName") || "";
 
@@ -66,11 +58,6 @@ export default function Navbar({
     });
   };
 
-  // --- Clear searchTerm (old clearSearch) ---
-  const clearSearch = () => {
-    setSearchTerm("");
-  };
-
   return (
     <>
       <ToastContainer />
@@ -80,26 +67,20 @@ export default function Navbar({
         <div className="max-w-screen-xl mx-auto px-4">
           <div className="flex items-center">
             {/** ─── Left: Logo (always visible) ─── **/}
-            <Link
-              to="/"
-              className="flex items-center mr-4"
-              onClick={onHomeClick}
-            >
+            <Link to="/" className="flex items-center mr-4">
               <img
                 src="/logo-w.svg"
                 alt="YouTube‐Style Logo"
-                className="h-8 w-auto cursor-pointer"
+                className="h-8 w-auto"
               />
               <span className="ml-1 text-xs font-semibold">SA</span>
             </Link>
 
             {/** ─── Search Bar (visible at lg and above) ─── **/}
             <div className="hidden lg:flex flex-1 items-center mx-4">
-              <form onSubmit={onSearchSubmit} className="w-full relative">
+              <div className="relative flex-1">
                 <input
                   type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search"
                   className="
                     w-full
@@ -109,35 +90,10 @@ export default function Navbar({
                     rounded-l-md
                     py-2
                     pl-3
-                    pr-10
                     focus:outline-none
                   "
-                  autoComplete="off"
-                  ref={suggestionsRef}
                 />
-
-                {/** Clear (X) button, when there is text */}
-                {searchTerm && (
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="
-                      absolute
-                      right-10
-                      top-1/2
-                      transform -translate-y-1/2
-                      text-gray-400
-                      hover:text-white
-                      focus:outline-none
-                    "
-                  >
-                    <FiX size={16} />
-                  </button>
-                )}
-
-                {/** Search (magnifying glass) button */}
                 <button
-                  type="submit"
                   className="
                     absolute
                     right-0
@@ -154,37 +110,7 @@ export default function Navbar({
                 >
                   <FiSearch className="text-white" />
                 </button>
-
-                {/** Suggestions dropdown (optional) */}
-                {Array.isArray(suggestions) && suggestions.length > 0 && (
-                  <ul
-                    className="
-                      absolute
-                      top-full
-                      left-0
-                      w-full
-                      bg-neutral-900
-                      text-neutral-200
-                      mt-1
-                      rounded-md
-                      shadow-lg
-                      z-20
-                      max-h-60
-                      overflow-y-auto
-                    "
-                  >
-                    {suggestions.map((sugg, idx) => (
-                      <li
-                        key={`${sugg}-${idx}`}
-                        className="px-3 py-2 hover:bg-neutral-700 cursor-pointer"
-                        onClick={() => onSuggestionClick(sugg)}
-                      >
-                        {sugg}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </form>
+              </div>
             </div>
 
             {/** ─── Horizontal Links (visible at lg and above) ─── **/}
@@ -213,7 +139,7 @@ export default function Navbar({
                 className="flex items-center space-x-1 hover:opacity-80 transition"
               >
                 <img
-                  src="/subscriptions.svg"
+                  src="/Subscriptions.svg"
                   alt="Subscriptions"
                   className="h-6 w-6"
                 />
@@ -291,14 +217,12 @@ export default function Navbar({
 
           {/** ─── Mobile Dropdown (only when menuOpen=true & below lg) ─── **/}
           {menuOpen && (
-            <div className="lg:hidden bg-neutral-800 border-t border-gray-700 mt-2">
+            <div className="lg:hidden bg-neutral-800 border-t border-gray-700">
               <div className="px-4 py-3 space-y-4">
                 {/** ‣ Mobile Search Box ‣ */}
-                <form onSubmit={onSearchSubmit} className="flex items-center">
+                <div className="flex items-center">
                   <input
                     type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Search"
                     className="
                       flex-1
@@ -310,12 +234,11 @@ export default function Navbar({
                       rounded-l-md
                       focus:outline-none
                     "
-                    autoComplete="off"
                   />
-                  <button className="bg-neutral-600 hover:bg-neutral-500 p-3 rounded-r-md">
+                  <button className="bg-neutral-600 hover:bg-neutral-500 p-2 rounded-r-md">
                     <FiSearch className="text-white" />
                   </button>
-                </form>
+                </div>
 
                 {/** ‣ Mobile Links ‣ */}
                 <Link
