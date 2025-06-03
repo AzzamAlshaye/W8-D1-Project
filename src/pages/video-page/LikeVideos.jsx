@@ -175,7 +175,7 @@ export default function LikedVideos() {
             {likedVideoDetails.map((video) => {
               const { id, snippet, statistics, contentDetails } = video;
               const thumbSrc =
-                (snippet.thumbnails.medium && snippet.thumbnails.medium.url) ||
+                (snippet.thumbnails.high && snippet.thumbnails.high.url) ||
                 snippet.thumbnails.default.url;
               const title = snippet.title;
               const channelTitle = snippet.channelTitle;
