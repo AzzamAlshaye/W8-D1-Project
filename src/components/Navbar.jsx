@@ -321,28 +321,36 @@ export default function Navbar({
                 <Link
                   to="/"
                   onClick={() => setMenuOpen(false)}
-                  className="block text-white hover:text-gray-300"
+                  className=" text-white hover:text-gray-300 flex items-center gap-3"
                 >
                   Home
+                  <img src="/home.svg" alt="home logo" className="h-5" />
                 </Link>
                 <button
                   onClick={() => setMenuOpen(false)}
-                  className="block text-white hover:text-gray-300"
+                  className=" text-white hover:text-gray-300 flex items-center gap-3"
                 >
                   Shorts
+                  <img src="/shorts.svg" alt="shorts logo" className="h-5" />
                 </button>
                 <button
                   onClick={() => setMenuOpen(false)}
-                  className="block text-white hover:text-gray-300"
+                  className=" text-white hover:text-gray-300 flex items-center gap-3 "
                 >
                   Subscriptions
+                  <img
+                    src="/subscriptions.svg"
+                    alt="subscriptions logo"
+                    className="h-5"
+                  />
                 </button>
                 <Link
                   to="/liked"
                   onClick={() => setMenuOpen(false)}
-                  className="block text-white hover:text-gray-300"
+                  className=" text-white hover:text-gray-300 flex items-center gap-3"
                 >
                   Liked
+                  <img src="/liked.svg" alt="liked logo" className="h-5" />
                 </Link>
 
                 {/** ‣ Mobile Auth Block ‣ */}
@@ -356,7 +364,7 @@ export default function Navbar({
                         confirmLogout();
                         setMenuOpen(false);
                       }}
-                      className="text-red-500 font-semibold"
+                      className="text-neutral-900 font-semibold bg-red-500 px-2 p-1 rounded-2xl"
                     >
                       Sign Out
                     </button>
