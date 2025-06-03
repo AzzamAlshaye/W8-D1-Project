@@ -234,13 +234,18 @@ export default function VideoPage() {
     axios
       .get(COMMENTS_API, { params: { videoId } })
       .then((resp) => {
-        const normalized = resp.data.map((c) => ({
-          ...c,
-          likeCount: Number(c.likeCount) || 0,
-          dislikeCount: Number(c.dislikeCount) || 0,
-          likedBy: Array.isArray(c.likedBy) ? c.likedBy : [],
-          dislikedBy: Array.isArray(c.dislikedBy) ? c.dislikedBy : [],
-        }));
+        const normalized = resp.data
+          .map((c) => ({
+            ...c,
+            likeCount: Number(c.likeCount) || 0,
+            dislikeCount: Number(c.dislikeCount) || 0,
+            likedBy: Array.isArray(c.likedBy) ? c.likedBy : [],
+            dislikedBy: Array.isArray(c.dislikedBy) ? c.dislikedBy : [],
+          }))
+          .sort(
+            (a, b) =>
+              new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime()
+          );
         setComments(normalized);
       })
       .catch((err) => {
