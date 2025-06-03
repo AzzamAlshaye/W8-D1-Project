@@ -77,9 +77,10 @@ export default function Navbar({
 
       {/** ─── Main Navbar Container ─── **/}
       <nav className="bg-neutral-900 text-white py-3">
-        <div className="max-w-screen-xl mx-auto px-4">
+        <div className="max-w-screen mx-auto px-4">
           <div className="flex items-center">
             {/** ─── Left: Logo (always visible) ─── **/}
+
             <Link
               to="/"
               className="flex items-center mr-4"
@@ -93,8 +94,50 @@ export default function Navbar({
               <span className="ml-1 text-xs font-semibold">SA</span>
             </Link>
 
+            {/** ─── Horizontal Links (visible at lg and above) ─── **/}
+            <div className="hidden lg:flex items-center space-x-6">
+              {/* Home */}
+              <Link
+                to="/"
+                className="flex items-center space-x-1 hover:opacity-80 transition"
+              >
+                <img src="/home.svg" alt="Home" className="h-6 w-6" />
+                <span className="text-sm">Home</span>
+              </Link>
+
+              {/* Shorts (does nothing) */}
+              <button
+                onClick={(e) => e.preventDefault()}
+                className="flex items-center space-x-1 hover:opacity-80 transition"
+              >
+                <img src="/shorts.svg" alt="Shorts" className="h-6 w-6" />
+                <span className="text-sm">Shorts</span>
+              </button>
+
+              {/* Subscriptions (does nothing) */}
+              <button
+                onClick={(e) => e.preventDefault()}
+                className="flex items-center space-x-1 hover:opacity-80 transition"
+              >
+                <img
+                  src="/subscriptions.svg"
+                  alt="Subscriptions"
+                  className="h-6 w-6"
+                />
+                <span className="text-sm">Subscriptions</span>
+              </button>
+
+              {/* Liked Videos */}
+              <Link
+                to="/liked"
+                className="flex items-center space-x-1 hover:opacity-80 transition"
+              >
+                <img src="/liked.svg" alt="Liked" className="h-6 w-6" />
+                <span className="text-sm">Liked</span>
+              </Link>
+            </div>
             {/** ─── Search Bar (visible at lg and above) ─── **/}
-            <div className="hidden lg:flex flex-1 items-center mx-4">
+            <div className="hidden lg:flex w-1/4  items-center mx-4">
               <form onSubmit={onSearchSubmit} className="w-full relative">
                 <input
                   type="text"
@@ -185,49 +228,6 @@ export default function Navbar({
                   </ul>
                 )}
               </form>
-            </div>
-
-            {/** ─── Horizontal Links (visible at lg and above) ─── **/}
-            <div className="hidden lg:flex items-center space-x-6">
-              {/* Home */}
-              <Link
-                to="/"
-                className="flex items-center space-x-1 hover:opacity-80 transition"
-              >
-                <img src="/home.svg" alt="Home" className="h-6 w-6" />
-                <span className="text-sm">Home</span>
-              </Link>
-
-              {/* Shorts (does nothing) */}
-              <button
-                onClick={(e) => e.preventDefault()}
-                className="flex items-center space-x-1 hover:opacity-80 transition"
-              >
-                <img src="/shorts.svg" alt="Shorts" className="h-6 w-6" />
-                <span className="text-sm">Shorts</span>
-              </button>
-
-              {/* Subscriptions (does nothing) */}
-              <button
-                onClick={(e) => e.preventDefault()}
-                className="flex items-center space-x-1 hover:opacity-80 transition"
-              >
-                <img
-                  src="/subscriptions.svg"
-                  alt="Subscriptions"
-                  className="h-6 w-6"
-                />
-                <span className="text-sm">Subscriptions</span>
-              </button>
-
-              {/* Liked Videos */}
-              <Link
-                to="/liked"
-                className="flex items-center space-x-1 hover:opacity-80 transition"
-              >
-                <img src="/liked.svg" alt="Liked" className="h-6 w-6" />
-                <span className="text-sm">Liked</span>
-              </Link>
             </div>
 
             {/** ─── Right: Auth Block (visible at lg and above) ─── **/}
