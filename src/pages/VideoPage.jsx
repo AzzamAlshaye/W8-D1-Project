@@ -4,13 +4,17 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router";
 import axios from "axios";
 import Navbar from "../components/Navbar";
-import RelativeTime from "../utils/RelativeTime"; // Adjust import path as needed
-import formatDuration from "../utils/formatDuration"; // Adjust import path as needed
+import RelativeTime from "../utils/RelativeTime";
+import formatDuration from "../utils/formatDuration";
 
 // ─────── React Icons Imports ───────
 import { BiSolidLike, BiSolidDislike } from "react-icons/bi";
 import { FiMoreHorizontal } from "react-icons/fi";
 import { FaShare, FaUserCircle } from "react-icons/fa";
+
+// ─────── React Toastify Imports ───────
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const API_KEY = "AIzaSyBchUlb9-p61sooK84Qvl5wWS4CnaE62Es";
 const COMMENTS_API = "https://683c222328a0b0f2fdc64548.mockapi.io/comments";
@@ -110,8 +114,15 @@ export default function VideoPage() {
   const [channelSubs, setChannelSubs] = useState(null);
   const [popularVideos, setPopularVideos] = useState([]);
 
+  // Comments state now stores both top-level comments and replies in a flat array
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
+
+  // For tracking edits and replies
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editCommentText, setEditCommentText] = useState("");
+  const [replyingToCommentId, setReplyingToCommentId] = useState(null);
+  const [replyText, setReplyText] = useState("");
 
   const [videoLikeCount, setVideoLikeCount] = useState(0);
   const [videoDislikeCount, setVideoDislikeCount] = useState(0);
@@ -126,6 +137,7 @@ export default function VideoPage() {
     loadingVideo || loadingPopular || loadingComments || loadingLikedState;
   const isAuth = localStorage.getItem("isAuthenticated") === "true";
   const currentUserId = localStorage.getItem("userId");
+  const currentUserName = localStorage.getItem("fullName") || "Anonymous";
 
   // New state for collapsible description
   const [isDescExpanded, setIsDescExpanded] = useState(false);
@@ -142,6 +154,9 @@ export default function VideoPage() {
     setVideoLikeCount(0);
     setVideoDislikeCount(0);
     setIsVideoLiked(false);
+
+    setEditingCommentId(null);
+    setReplyingToCommentId(null);
 
     setLoadingVideo(true);
     setLoadingPopular(true);
@@ -241,7 +256,11 @@ export default function VideoPage() {
             dislikeCount: Number(c.dislikeCount) || 0,
             likedBy: Array.isArray(c.likedBy) ? c.likedBy : [],
             dislikedBy: Array.isArray(c.dislikedBy) ? c.dislikedBy : [],
+            // If authorId or parentId are missing (older comments), they default to null
+            authorId: c.authorId || null,
+            parentId: c.parentId || null,
           }))
+          // Sort by postedAt descending (most recent first)
           .sort(
             (a, b) =>
               new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime()
@@ -288,6 +307,8 @@ export default function VideoPage() {
   }, [videoId, isAuth, currentUserId]);
 
   // ────────── Comment Handlers ──────────
+
+  // 1) Add a new top‐level comment
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!isAuth) {
@@ -303,7 +324,9 @@ export default function VideoPage() {
       videoId,
       text: newComment.trim(),
       postedAt: new Date().toISOString(),
-      author: localStorage.getItem("fullName") || "Anonymous",
+      author: currentUserName,
+      authorId: currentUserId,
+      parentId: null, // top‐level
       likeCount: 0,
       dislikeCount: 0,
       likedBy: [],
@@ -320,21 +343,25 @@ export default function VideoPage() {
         dislikedBy: Array.isArray(resp.data.dislikedBy)
           ? resp.data.dislikedBy
           : [],
+        authorId: resp.data.authorId,
+        parentId: resp.data.parentId,
       };
-      setComments((prev) => [...prev, added]);
+      setComments((prev) => [added, ...prev]); // Prepend so newest top‐level appears first
       setNewComment("");
     } catch (err) {
       console.error("Error posting new comment:", err);
     }
   };
 
-  const handleCommentLike = async (index) => {
+  // 2) Like or unlike a comment (works for both top‐level and replies)
+  const handleCommentLike = async (commentId) => {
     if (!isAuth) {
       console.warn("User not authenticated. Cannot like comment.");
       return;
     }
-    const comment = comments[index];
-    if (!comment || !comment.id) return;
+    const commentIndex = comments.findIndex((c) => c.id === commentId);
+    if (commentIndex === -1) return;
+    const comment = comments[commentIndex];
 
     const userId = currentUserId;
     const hasLiked = comment.likedBy.includes(userId);
@@ -368,8 +395,8 @@ export default function VideoPage() {
         }
       );
       setComments((prev) =>
-        prev.map((c, i) =>
-          i === index
+        prev.map((c) =>
+          c.id === comment.id
             ? {
                 ...c,
                 likeCount: updated.likeCount,
@@ -385,13 +412,15 @@ export default function VideoPage() {
     }
   };
 
-  const handleCommentDislike = async (index) => {
+  // 3) Dislike or remove dislike from a comment
+  const handleCommentDislike = async (commentId) => {
     if (!isAuth) {
       console.warn("User not authenticated. Cannot dislike comment.");
       return;
     }
-    const comment = comments[index];
-    if (!comment || !comment.id) return;
+    const commentIndex = comments.findIndex((c) => c.id === commentId);
+    if (commentIndex === -1) return;
+    const comment = comments[commentIndex];
 
     const userId = currentUserId;
     const hasLiked = comment.likedBy.includes(userId);
@@ -425,8 +454,8 @@ export default function VideoPage() {
         }
       );
       setComments((prev) =>
-        prev.map((c, i) =>
-          i === index
+        prev.map((c) =>
+          c.id === comment.id
             ? {
                 ...c,
                 likeCount: updated.likeCount,
@@ -442,7 +471,7 @@ export default function VideoPage() {
     }
   };
 
-  // ────────── Video Like/Unlike Handler ──────────
+  // 4) Toggle video like/unlike
   const handleVideoLikeToggle = async () => {
     if (!isAuth) {
       console.warn("User not authenticated. Cannot like video.");
@@ -477,6 +506,169 @@ export default function VideoPage() {
     }
   };
 
+  // ────────── Delete Flow with React Toastify Confirmation ──────────
+
+  // (A) Show a toast-based confirmation dialog
+  const confirmDeleteComment = (commentId) => {
+    toast.info(
+      <div className="flex flex-col gap-2">
+        <p>Are you sure you want to delete this comment?</p>
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={() => {
+              toast.dismiss(); // close the toast
+              actuallyDeleteComment(commentId);
+            }}
+            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm"
+          >
+            Yes
+          </button>
+          <button
+            onClick={() => toast.dismiss()}
+            className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-md text-sm"
+          >
+            No
+          </button>
+        </div>
+      </div>,
+      {
+        position: "top-center",
+        autoClose: false,
+        closeOnClick: false,
+        closeButton: false,
+      }
+    );
+  };
+
+  // (B) Actually delete the comment once “Yes” is clicked
+  const actuallyDeleteComment = async (commentId) => {
+    try {
+      await axios.delete(`${COMMENTS_API}/${commentId}`);
+      // Remove the comment and any replies with parentId === commentId
+      setComments((prev) =>
+        prev.filter((c) => c.id !== commentId && c.parentId !== commentId)
+      );
+      toast.success("Comment deleted.", {
+        position: "top-center",
+        autoClose: 2000,
+      });
+    } catch (err) {
+      console.error("Error deleting comment:", err);
+      toast.error("Failed to delete comment.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
+    }
+  };
+
+  // 5) Instead of window.confirm, call confirmDeleteComment
+  const handleDeleteComment = (commentId) => {
+    if (!isAuth) return;
+    const toDelete = comments.find((c) => c.id === commentId);
+    if (!toDelete) return;
+    if (toDelete.authorId !== currentUserId) {
+      console.warn("Cannot delete someone else's comment.");
+      return;
+    }
+    confirmDeleteComment(commentId);
+  };
+
+  // 6) Begin editing a comment
+  const handleEditComment = (commentId, currentText) => {
+    setEditingCommentId(commentId);
+    setEditCommentText(currentText);
+    // Also clear any active reply form
+    setReplyingToCommentId(null);
+  };
+
+  // 7) Cancel editing
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditCommentText("");
+  };
+
+  // 8) Save edited comment
+  const handleSaveEditedComment = async (commentId) => {
+    if (editCommentText.trim() === "") {
+      console.warn("Edited text cannot be empty.");
+      return;
+    }
+    try {
+      const { data: updated } = await axios.put(
+        `${COMMENTS_API}/${commentId}`,
+        {
+          text: editCommentText.trim(),
+        }
+      );
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId
+            ? {
+                ...c,
+                text: updated.text,
+              }
+            : c
+        )
+      );
+      setEditingCommentId(null);
+      setEditCommentText("");
+    } catch (err) {
+      console.error("Error saving edited comment:", err);
+    }
+  };
+
+  // 9) Click “Reply” on a specific comment
+  const handleReplyClick = (commentId) => {
+    if (!isAuth) return;
+    setReplyingToCommentId((prev) => (prev === commentId ? null : commentId));
+    setEditCommentText("");
+    setEditingCommentId(null);
+    setReplyText("");
+  };
+
+  // 10) Submit a reply to a comment
+  const handleAddReply = async (e, parentCommentId) => {
+    e.preventDefault();
+    if (!isAuth) return;
+    if (replyText.trim() === "") {
+      console.warn("Reply text cannot be empty.");
+      return;
+    }
+
+    const replyPayload = {
+      videoId,
+      text: replyText.trim(),
+      postedAt: new Date().toISOString(),
+      author: currentUserName,
+      authorId: currentUserId,
+      parentId: parentCommentId,
+      likeCount: 0,
+      dislikeCount: 0,
+      likedBy: [],
+      dislikedBy: [],
+    };
+
+    try {
+      const resp = await axios.post(COMMENTS_API, replyPayload);
+      const added = {
+        ...resp.data,
+        likeCount: Number(resp.data.likeCount) || 0,
+        dislikeCount: Number(resp.data.dislikeCount) || 0,
+        likedBy: Array.isArray(resp.data.likedBy) ? resp.data.likedBy : [],
+        dislikedBy: Array.isArray(resp.data.dislikedBy)
+          ? resp.data.dislikedBy
+          : [],
+        authorId: resp.data.authorId,
+        parentId: resp.data.parentId,
+      };
+      setComments((prev) => [added, ...prev]);
+      setReplyingToCommentId(null);
+      setReplyText("");
+    } catch (err) {
+      console.error("Error posting reply:", err);
+    }
+  };
+
   // ────────── Render Loading State ──────────
   if (isLoading || !videoDetails) {
     return (
@@ -494,9 +686,21 @@ export default function VideoPage() {
     { year: "numeric", month: "short", day: "numeric" }
   );
 
+  // Separate top‐level comments vs. replies
+  const topLevelComments = comments.filter((c) => !c.parentId);
+  // For quick lookup of replies, group by parentId
+  const repliesByParentId = comments.reduce((acc, c) => {
+    if (c.parentId) {
+      if (!acc[c.parentId]) acc[c.parentId] = [];
+      acc[c.parentId].push(c);
+    }
+    return acc;
+  }, {});
+
   return (
     <div className="min-h-screen bg-neutral-900 text-white flex flex-col">
       {/* ───────── Navbar ───────── */}
+      <ToastContainer position="top-center" />
       <Navbar
         mode={mode}
         searchTerm={searchTerm}
@@ -676,66 +880,303 @@ export default function VideoPage() {
               </p>
             )}
 
+            {/* Render top‐level comments */}
             <div className="mt-6 space-y-4 overflow-auto">
-              {comments.length === 0 ? (
+              {topLevelComments.length === 0 ? (
                 <p className="text-gray-500">No comments yet.</p>
               ) : (
-                comments.map((c, idx) => {
+                topLevelComments.map((c) => {
                   const hasLiked = c.likedBy.includes(currentUserId);
                   const hasDisliked = c.dislikedBy.includes(currentUserId);
+                  const isOwnComment = c.authorId === currentUserId;
+                  const replies = repliesByParentId[c.id] || [];
 
                   return (
-                    <div
-                      key={c.id}
-                      className="flex flex-col border-b border-gray-700 pb-4"
-                    >
-                      {/* ← Updated header with default user icon */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <FaUserCircle size={20} className="text-gray-400" />
-                          <p className="text-sm font-medium">{c.author}</p>
+                    <div key={c.id} className="space-y-2">
+                      {/* Parent Comment */}
+                      <div className="flex flex-col border-b border-gray-700 pb-4">
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <FaUserCircle size={20} className="text-gray-400" />
+                            <p className="text-sm font-medium">{c.author}</p>
+                          </div>
+                          <p className="text-gray-500 text-xs">
+                            {new Date(c.postedAt).toLocaleString()}
+                          </p>
                         </div>
-                        <p className="text-gray-500 text-xs">
-                          {new Date(c.postedAt).toLocaleString()}
-                        </p>
+
+                        {/* Text or Edit Field */}
+                        {editingCommentId === c.id ? (
+                          <div className="mt-1 flex flex-col gap-2">
+                            <textarea
+                              value={editCommentText}
+                              onChange={(e) =>
+                                setEditCommentText(e.target.value)
+                              }
+                              rows={3}
+                              className="w-full bg-neutral-800 text-white placeholder-gray-500 border border-neutral-950 rounded-md p-2 focus:outline-none focus:border-gray-500"
+                            ></textarea>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleSaveEditedComment(c.id)}
+                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-md text-sm"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-gray-300 mt-1">{c.text}</p>
+
+                            {/* Actions: Like, Dislike, Reply, Edit/Delete (if own) */}
+                            <div className="flex items-center gap-4 mt-2">
+                              <button
+                                type="button"
+                                onClick={() => handleCommentLike(c.id)}
+                                aria-label={
+                                  hasLiked ? "Remove like" : "Like comment"
+                                }
+                                className={`flex items-center gap-1 text-sm ${
+                                  !isAuth
+                                    ? "text-gray-700 cursor-not-allowed"
+                                    : hasLiked
+                                    ? "text-blue-400"
+                                    : "text-gray-400 hover:text-white"
+                                }`}
+                                disabled={!isAuth}
+                              >
+                                <BiSolidLike size={20} />{" "}
+                                <span>{c.likeCount}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCommentDislike(c.id)}
+                                aria-label={
+                                  hasDisliked
+                                    ? "Remove dislike"
+                                    : "Dislike comment"
+                                }
+                                className={`flex items-center gap-1 text-sm ${
+                                  !isAuth
+                                    ? "text-gray-700 cursor-not-allowed"
+                                    : hasDisliked
+                                    ? "text-red-400"
+                                    : "text-gray-400 hover:text-white"
+                                }`}
+                                disabled={!isAuth}
+                              >
+                                <BiSolidDislike size={20} />{" "}
+                                <span>{c.dislikeCount}</span>
+                              </button>
+                              {isAuth && (
+                                <button
+                                  onClick={() => handleReplyClick(c.id)}
+                                  className="text-sm text-gray-400 hover:text-white"
+                                >
+                                  Reply
+                                </button>
+                              )}
+                              {isOwnComment && editingCommentId !== c.id && (
+                                <>
+                                  <button
+                                    onClick={() =>
+                                      handleEditComment(c.id, c.text)
+                                    }
+                                    className="text-sm text-gray-400 hover:text-white"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteComment(c.id)}
+                                    className="text-sm text-red-500 hover:text-red-600"
+                                  >
+                                    Delete
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
 
-                      <p className="text-gray-300 mt-1">{c.text}</p>
-                      <div className="flex items-center gap-4 mt-2">
-                        <button
-                          type="button"
-                          onClick={() => handleCommentLike(idx)}
-                          aria-label={hasLiked ? "Remove like" : "Like comment"}
-                          className={`flex items-center gap-1 text-sm ${
-                            !isAuth
-                              ? "text-gray-700 cursor-not-allowed"
-                              : hasLiked
-                              ? "text-blue-400"
-                              : "text-gray-400 hover:text-white"
-                          }`}
-                          disabled={!isAuth}
+                      {/* Reply Form (if replying to this comment) */}
+                      {replyingToCommentId === c.id && (
+                        <form
+                          onSubmit={(e) => handleAddReply(e, c.id)}
+                          className="ml-8 mt-2 flex flex-col"
                         >
-                          <BiSolidLike size={20} /> <span>{c.likeCount}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleCommentDislike(idx)}
-                          aria-label={
-                            hasDisliked ? "Remove dislike" : "Dislike comment"
-                          }
-                          className={`flex items-center gap-1 text-sm ${
-                            !isAuth
-                              ? "text-gray-700 cursor-not-allowed"
-                              : hasDisliked
-                              ? "text-red-400"
-                              : "text-gray-400 hover:text-white"
-                          }`}
-                          disabled={!isAuth}
-                        >
-                          <BiSolidDislike size={20} />
-                          <span>{c.dislikeCount}</span>
-                        </button>
-                      </div>
+                          <textarea
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            rows={2}
+                            placeholder="Add a reply..."
+                            className="w-full bg-neutral-800 text-white placeholder-gray-500 border border-neutral-950 rounded-md p-2 focus:outline-none focus:border-gray-500"
+                          ></textarea>
+                          <div className="flex items-center gap-2 mt-1">
+                            <button
+                              type="submit"
+                              className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded-md text-sm"
+                            >
+                              Reply
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReplyingToCommentId(null);
+                                setReplyText("");
+                              }}
+                              className="bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded-md text-sm"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      )}
+
+                      {/* Render Replies, if any */}
+                      {replies.length > 0 && (
+                        <div className="ml-8 space-y-4">
+                          {replies.map((r) => {
+                            const rHasLiked = r.likedBy.includes(currentUserId);
+                            const rHasDisliked =
+                              r.dislikedBy.includes(currentUserId);
+                            const rIsOwn = r.authorId === currentUserId;
+
+                            return (
+                              <div
+                                key={r.id}
+                                className="flex flex-col border-l border-gray-700 pl-4"
+                              >
+                                {/* Reply Header */}
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <FaUserCircle
+                                      size={18}
+                                      className="text-gray-400"
+                                    />
+                                    <p className="text-sm font-medium">
+                                      {r.author}
+                                    </p>
+                                  </div>
+                                  <p className="text-gray-500 text-xs">
+                                    {new Date(r.postedAt).toLocaleString()}
+                                  </p>
+                                </div>
+
+                                {/* Reply Text or Edit Field */}
+                                {editingCommentId === r.id ? (
+                                  <div className="mt-1 flex flex-col gap-2">
+                                    <textarea
+                                      value={editCommentText}
+                                      onChange={(e) =>
+                                        setEditCommentText(e.target.value)
+                                      }
+                                      rows={2}
+                                      className="w-full bg-neutral-800 text-white placeholder-gray-500 border border-neutral-950 rounded-md p-2 focus:outline-none focus:border-gray-500"
+                                    ></textarea>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() =>
+                                          handleSaveEditedComment(r.id)
+                                        }
+                                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm"
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={handleCancelEdit}
+                                        className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-md text-sm"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <p className="text-gray-300 mt-1">
+                                      {r.text}
+                                    </p>
+
+                                    {/* Reply Actions */}
+                                    <div className="flex items-center gap-4 mt-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCommentLike(r.id)}
+                                        aria-label={
+                                          rHasLiked
+                                            ? "Remove like"
+                                            : "Like reply"
+                                        }
+                                        className={`flex items-center gap-1 text-sm ${
+                                          !isAuth
+                                            ? "text-gray-700 cursor-not-allowed"
+                                            : rHasLiked
+                                            ? "text-blue-400"
+                                            : "text-gray-400 hover:text-white"
+                                        }`}
+                                        disabled={!isAuth}
+                                      >
+                                        <BiSolidLike size={18} />{" "}
+                                        <span>{r.likeCount}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleCommentDislike(r.id)
+                                        }
+                                        aria-label={
+                                          rHasDisliked
+                                            ? "Remove dislike"
+                                            : "Dislike reply"
+                                        }
+                                        className={`flex items-center gap-1 text-sm ${
+                                          !isAuth
+                                            ? "text-gray-700 cursor-not-allowed"
+                                            : rHasDisliked
+                                            ? "text-red-400"
+                                            : "text-gray-400 hover:text-white"
+                                        }`}
+                                        disabled={!isAuth}
+                                      >
+                                        <BiSolidDislike size={18} />{" "}
+                                        <span>{r.dislikeCount}</span>
+                                      </button>
+                                      {rIsOwn && (
+                                        <>
+                                          <button
+                                            onClick={() =>
+                                              handleEditComment(r.id, r.text)
+                                            }
+                                            className="text-sm text-gray-400 hover:text-white"
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            onClick={() =>
+                                              handleDeleteComment(r.id)
+                                            }
+                                            className="text-sm text-red-500 hover:text-red-600"
+                                          >
+                                            Delete
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -766,7 +1207,7 @@ export default function VideoPage() {
           </div>
 
           <h2 className="text-lg font-medium mb-2">Popular Videos</h2>
-          <div className="flex-1 flex flex-col space-y-3">
+          <div className="flex-1 flex flex-col space-y-3 overflow-auto">
             {popularVideos.length === 0 ? (
               <p className="text-gray-500">No popular videos found.</p>
             ) : (
