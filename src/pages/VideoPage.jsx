@@ -10,9 +10,9 @@ import formatDuration from "../utils/formatDuration"; // Adjust import path as n
 // ─────── React Icons Imports ───────
 import { BiSolidLike, BiSolidDislike } from "react-icons/bi";
 import { FiMoreHorizontal } from "react-icons/fi";
-import { FaShare } from "react-icons/fa";
+import { FaShare, FaUserCircle } from "react-icons/fa";
 
-const API_KEY = "AIzaSyBBro6atDbmlP2ypqbIEIdmDTzmFEb3vFQ";
+const API_KEY = "AIzaSyBchUlb9-p61sooK84Qvl5wWS4CnaE62Es";
 const COMMENTS_API = "https://683c222328a0b0f2fdc64548.mockapi.io/comments";
 const LIKED_VIDEOS_API =
   "https://683e928b1cd60dca33dc32c0.mockapi.io/likedVideos";
@@ -689,12 +689,17 @@ export default function VideoPage() {
                       key={c.id}
                       className="flex flex-col border-b border-gray-700 pb-4"
                     >
+                      {/* ← Updated header with default user icon */}
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">{c.author}</p>
+                        <div className="flex items-center gap-2">
+                          <FaUserCircle size={20} className="text-gray-400" />
+                          <p className="text-sm font-medium">{c.author}</p>
+                        </div>
                         <p className="text-gray-500 text-xs">
                           {new Date(c.postedAt).toLocaleString()}
                         </p>
                       </div>
+
                       <p className="text-gray-300 mt-1">{c.text}</p>
                       <div className="flex items-center gap-4 mt-2">
                         <button
@@ -741,6 +746,25 @@ export default function VideoPage() {
 
         {/* Right Column: Popular Videos (stacks under on small screens) */}
         <aside className="w-full lg:w-1/4 flex flex-col">
+          {/* ── Updated Ad Div ── */}
+          <div className="mb-4">
+            <a
+              href="https://www.linkedin.com/in/azzam-alshaye/"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Follow me on LinkedIn"
+            >
+              <img
+                src="/Linkin-ad.png"
+                alt="LinkedIn Ad"
+                className="w-full h-auto rounded-md"
+              />
+            </a>
+            <p className="text-center text-sm mt-1 text-gray-300">
+              Follow me on LinkedIn
+            </p>
+          </div>
+
           <h2 className="text-lg font-medium mb-2">Popular Videos</h2>
           <div className="flex-1 flex flex-col space-y-3">
             {popularVideos.length === 0 ? (

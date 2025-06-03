@@ -6,7 +6,7 @@ import Navbar from "../components/Navbar";
 import VideoGrid from "./video-page/VideoGrid";
 import SearchResults from "./video-page/SearchResults";
 
-const API_KEY = "AIzaSyBBro6atDbmlP2ypqbIEIdmDTzmFEb3vFQ";
+const API_KEY = "AIzaSyBchUlb9-p61sooK84Qvl5wWS4CnaE62Es";
 
 export default function HomePage() {
   const navigate = useNavigate();

@@ -1,9 +1,6 @@
 // src/pages/video-page/SearchResults.jsx
-
 import React from "react";
 import { Link } from "react-router";
-
-// Import your utilities
 import getRelativeTime from "../../utils/RelativeTime";
 import formatDuration from "../../utils/formatDuration";
 

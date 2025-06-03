@@ -4,9 +4,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router";
 import axios from "axios";
 import Navbar from "../../components/Navbar";
-import formatDuration from "../../utils/formatDuration"; // Adjust import path as needed
+import formatDuration from "../../utils/formatDuration";
 
-const API_KEY = "AIzaSyBBro6atDbmlP2ypqbIEIdmDTzmFEb3vFQ";
+const API_KEY = "AIzaSyBchUlb9-p61sooK84Qvl5wWS4CnaE62Es";
 const LIKED_VIDEOS_API =
   "https://683e928b1cd60dca33dc32c0.mockapi.io/likedVideos";
 

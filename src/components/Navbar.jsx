@@ -66,7 +66,6 @@ export default function Navbar({
     });
   };
 
-  // --- Clear searchTerm (old clearSearch) ---
   const clearSearch = () => {
     setSearchTerm("");
   };
